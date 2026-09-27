@@ -596,7 +596,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     }
     var len = LEN[piece.pairKey];
     var color = COLOR[piece.colorKey];
-    var rot = piece.rot || 90;
+    var rot = (piece.rot !== undefined && piece.rot !== null) ? piece.rot : 90;
     if (piece.duplicated){
       out.push(rod(len, color, rot - 21));
       out.push(rod(len, color, rot + 21));
@@ -665,8 +665,8 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 
   // ---- cell layout presets ----
   var SINGLE = { cx: 320, cy: 220, rx: 190, ry: 150 };
-  var TOP2   = { cx: 320, cy: 128, rx: 175, ry: 95 };
-  var BOT2   = { cx: 320, cy: 322, rx: 175, ry: 95 };
+  var LEFT2  = { cx: 150, cy: 220, rx: 135, ry: 140 };
+  var RIGHT2 = { cx: 490, cy: 220, rx: 135, ry: 140 };
   var TL = { cx: 165, cy: 118, rx: 128, ry: 82 };
   var TR = { cx: 475, cy: 118, rx: 128, ry: 82 };
   var BL = { cx: 165, cy: 330, rx: 128, ry: 82 };
@@ -681,7 +681,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     opts = opts || {};
     return {
       id: id, pairKey: pairKey, colorKey: colorKey, cell: cell,
-      x: x, y: y, rot: opts.rot || 90,
+      x: x, y: y, rot: (opts.rot !== undefined && opts.rot !== null) ? opts.rot : 90,
       duplicated: !!opts.duplicated, thread: !!opts.thread, seed: opts.seed || 0,
       draggable: opts.draggable !== false, locked: !!opts.locked,
       bundleId: opts.bundleId || null,
@@ -723,7 +723,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         task: "replicate", required: 4,
         instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
         initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
-        cells: [{ rect: SINGLE, axis: "v", nucleus: false }]
+        cells: [{ rect: SINGLE, axis: "h", nucleus: false }]
       },
       {
         key: "metaphase", badge: "중기", title: "중기 — 적도판 정렬",
@@ -737,7 +737,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
             return mkPiece("m2-"+i, d[1], d[0], "single", SINGLE.cx+s.dx, SINGLE.cy+s.dy, { duplicated:true, rot:s.rot });
           });
         },
-        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle: true, equator: true }]
+        cells: [{ rect: SINGLE, axis: "h", nucleus: false, spindle: true, equator: true }]
       },
       {
         key: "anaphase", badge: "후기", title: "후기 — 염색분체 분리",
@@ -747,29 +747,29 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         initPieces: function(){
           var defs = [["Apat","A",-90],["Amat","A",-30],["Bpat","B",30],["Bmat","B",90]];
           return defs.map(function(d,i){
-            return mkPiece("m3-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy, { duplicated:true, rot:0 });
+            return mkPiece("m3-"+i, d[1], d[0], "single", SINGLE.cx, SINGLE.cy+d[2], { duplicated:true, rot:90 });
           });
         },
-        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle: true }]
+        cells: [{ rect: SINGLE, axis: "h", nucleus: false, spindle: true }]
       },
       {
         key: "telophase", badge: "말기 · 세포질분열", title: "말기와 세포질분열 — 딸세포 완성",
-        desc: "양 극에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
+        desc: "양 옆에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
         task: "action", actionLabel: "세포질 분열", required: 1, isFinal: true,
         instruction: "아래 「세포질 분열」 버튼을 눌러 딸세포 2개를 완성하세요.",
         onAction: function(){ cytokinesisSplit("single", [
-          { key:"top", rect: TOP2, nucleus:true }, { key:"bot", rect: BOT2, nucleus:true }
-        ], function(piece){ return piece.y < SINGLE.cy ? "top" : "bot"; }, [[-58,-14,70],[-18,14,85],[20,-12,100],[58,12,115]]); },
+          { key:"left", rect: LEFT2, nucleus:true }, { key:"right", rect: RIGHT2, nucleus:true }
+        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[-14,-58,70],[14,-18,85],[-12,20,100],[12,58,115]]); },
         initPieces: function(){
           var defs = [["Apat","A",-60,-104],["Amat","A",-20,-104],["Bpat","B",20,-104],["Bmat","B",60,-104]];
           var out = [];
           defs.forEach(function(d,i){
-            out.push(mkPiece("m4a-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy+d[3], { rot:90, draggable:false, locked:true }));
-            out.push(mkPiece("m4b-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy-d[3], { rot:90, draggable:false, locked:true }));
+            out.push(mkPiece("m4a-"+i, d[1], d[0], "single", SINGLE.cx+d[3], SINGLE.cy+d[2], { rot:0, draggable:false, locked:true }));
+            out.push(mkPiece("m4b-"+i, d[1], d[0], "single", SINGLE.cx-d[3], SINGLE.cy+d[2], { rot:0, draggable:false, locked:true }));
           });
           return out;
         },
-        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle:true }]
+        cells: [{ rect: SINGLE, axis: "h", nucleus: false, spindle:true }]
       }
     ];
   }
@@ -782,7 +782,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         task: "replicate", required: 4,
         instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
         initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
-        cells: [{ rect: SINGLE, axis:"v", nucleus:false }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:false }]
       },
       {
         key: "prophase1-synapsis", badge: "전기Ⅰ (접합)", title: "전기Ⅰ — 상동염색체의 접합",
@@ -798,7 +798,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
             mkPiece("e2-Bmat","B","Bmat","single", SINGLE.cx+90, SINGLE.cy+70, {duplicated:true, rot:65})
           ];
         },
-        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true }]
       },
       {
         key: "metaphase1", badge: "중기Ⅰ", title: "중기Ⅰ — 2가염색체의 정렬",
@@ -807,13 +807,13 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "2가염색체 묶음(쌍)을 드래그하여 적도판 위로 옮기세요. 한 쌍씩 함께 움직입니다.",
         initPieces: function(){
           return [
-            mkPiece("e3-Apat","A","Apat","single", SINGLE.cx-96, SINGLE.cy-60, {duplicated:true, rot:0, bundleId:"A"}),
-            mkPiece("e3-Amat","A","Amat","single", SINGLE.cx-80, SINGLE.cy-60, {duplicated:true, rot:0, bundleId:"A"}),
-            mkPiece("e3-Bpat","B","Bpat","single", SINGLE.cx+80, SINGLE.cy+60, {duplicated:true, rot:0, bundleId:"B"}),
-            mkPiece("e3-Bmat","B","Bmat","single", SINGLE.cx+96, SINGLE.cy+60, {duplicated:true, rot:0, bundleId:"B"})
+            mkPiece("e3-Apat","A","Apat","single", SINGLE.cx-60, SINGLE.cy-96, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e3-Amat","A","Amat","single", SINGLE.cx-60, SINGLE.cy-80, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e3-Bpat","B","Bpat","single", SINGLE.cx+60, SINGLE.cy+80, {duplicated:true, rot:90, bundleId:"B"}),
+            mkPiece("e3-Bmat","B","Bmat","single", SINGLE.cx+60, SINGLE.cy+96, {duplicated:true, rot:90, bundleId:"B"})
           ];
         },
-        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true, equator:true }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true, equator:true }]
       },
       {
         key: "anaphase1", badge: "후기Ⅰ", title: "후기Ⅰ — 상동염색체 분리",
@@ -823,13 +823,13 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "아래 「상동염색체 분리」 버튼을 눌러 상동염색체를 양 극으로 분리하세요.",
         initPieces: function(){
           return [
-            mkPiece("e4-Apat","A","Apat","single", SINGLE.cx-10, SINGLE.cy-6, {duplicated:true, rot:0, bundleId:"A"}),
-            mkPiece("e4-Amat","A","Amat","single", SINGLE.cx+10, SINGLE.cy-6, {duplicated:true, rot:0, bundleId:"A"}),
-            mkPiece("e4-Bpat","B","Bpat","single", SINGLE.cx-10, SINGLE.cy+6, {duplicated:true, rot:0, bundleId:"B"}),
-            mkPiece("e4-Bmat","B","Bmat","single", SINGLE.cx+10, SINGLE.cy+6, {duplicated:true, rot:0, bundleId:"B"})
+            mkPiece("e4-Apat","A","Apat","single", SINGLE.cx-6, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e4-Amat","A","Amat","single", SINGLE.cx-6, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e4-Bpat","B","Bpat","single", SINGLE.cx+6, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"B"}),
+            mkPiece("e4-Bmat","B","Bmat","single", SINGLE.cx+6, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"B"})
           ];
         },
-        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true }]
       },
       {
         key: "telophase1", badge: "말기Ⅰ · 세포질분열", title: "말기Ⅰ과 세포질분열 — 염색체 수 반감",
@@ -837,17 +837,17 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         task: "action", actionLabel:"세포질 분열", required: 1,
         instruction: "아래 「세포질 분열」 버튼을 눌러 세포 2개로 나누세요.",
         onAction: function(){ cytokinesisSplit("single", [
-          { key:"top", rect: TOP2, nucleus:false }, { key:"bot", rect: BOT2, nucleus:false }
-        ], function(piece){ return piece.y < SINGLE.cy ? "top" : "bot"; }, [[-46,0,100],[46,0,80]]); },
+          { key:"left", rect: LEFT2, nucleus:false }, { key:"right", rect: RIGHT2, nucleus:false }
+        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[0,-46,100],[0,46,80]]); },
         initPieces: function(){
           return [
-            mkPiece("e5-top-A","A","Apat","single", SINGLE.cx-34, SINGLE.cy-100, {duplicated:true, rot:90}),
-            mkPiece("e5-top-B","B","Bmat","single", SINGLE.cx+34, SINGLE.cy-100, {duplicated:true, rot:90}),
-            mkPiece("e5-bot-A","A","Amat","single", SINGLE.cx-34, SINGLE.cy+100, {duplicated:true, rot:90}),
-            mkPiece("e5-bot-B","B","Bpat","single", SINGLE.cx+34, SINGLE.cy+100, {duplicated:true, rot:90})
+            mkPiece("e5-left-A","A","Apat","single", SINGLE.cx-100, SINGLE.cy-34, {duplicated:true, rot:0}),
+            mkPiece("e5-left-B","B","Bmat","single", SINGLE.cx-100, SINGLE.cy+34, {duplicated:true, rot:0}),
+            mkPiece("e5-right-A","A","Amat","single", SINGLE.cx+100, SINGLE.cy-34, {duplicated:true, rot:0}),
+            mkPiece("e5-right-B","B","Bpat","single", SINGLE.cx+100, SINGLE.cy+34, {duplicated:true, rot:0})
           ];
         },
-        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true }]
       },
       {
         key: "metaphase2", badge: "전기Ⅱ → 중기Ⅱ", title: "전기Ⅱ~중기Ⅱ — 각자의 적도판 정렬",
@@ -856,15 +856,15 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "각 세포 안에서 염색체 두 개를 그 세포의 점선(적도판) 위로 각각 드래그하세요.",
         initPieces: function(){
           return [
-            mkPiece("e6-top-A","A","Apat","top", TOP2.cx-50, TOP2.cy-14, {duplicated:true, rot:25}),
-            mkPiece("e6-top-B","B","Bmat","top", TOP2.cx+48, TOP2.cy+16, {duplicated:true, rot:-15}),
-            mkPiece("e6-bot-A","A","Amat","bot", BOT2.cx-50, BOT2.cy+16, {duplicated:true, rot:-20}),
-            mkPiece("e6-bot-B","B","Bpat","bot", BOT2.cx+48, BOT2.cy-14, {duplicated:true, rot:20})
+            mkPiece("e6-left-A","A","Apat","left", LEFT2.cx-14, LEFT2.cy-50, {duplicated:true, rot:25}),
+            mkPiece("e6-left-B","B","Bmat","left", LEFT2.cx+16, LEFT2.cy+48, {duplicated:true, rot:-15}),
+            mkPiece("e6-right-A","A","Amat","right", RIGHT2.cx-16, RIGHT2.cy+48, {duplicated:true, rot:-20}),
+            mkPiece("e6-right-B","B","Bpat","right", RIGHT2.cx+14, RIGHT2.cy-50, {duplicated:true, rot:20})
           ];
         },
         cells: [
-          { rect: TOP2, axis:"h", nucleus:false, spindle:true, equator:true, key:"top" },
-          { rect: BOT2, axis:"h", nucleus:false, spindle:true, equator:true, key:"bot" }
+          { rect: LEFT2, axis:"v", nucleus:false, spindle:true, equator:true, key:"left" },
+          { rect: RIGHT2, axis:"v", nucleus:false, spindle:true, equator:true, key:"right" }
         ]
       },
       {
@@ -874,15 +874,15 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "아래 「염색분체 분리」 버튼을 눌러 각 세포 안의 염색분체를 분리하세요.",
         initPieces: function(){
           return [
-            mkPiece("e7-top-A","A","Apat","top", TOP2.cx, TOP2.cy-18, {duplicated:true, rot:90}),
-            mkPiece("e7-top-B","B","Bmat","top", TOP2.cx, TOP2.cy+20, {duplicated:true, rot:90}),
-            mkPiece("e7-bot-A","A","Amat","bot", BOT2.cx, BOT2.cy-18, {duplicated:true, rot:90}),
-            mkPiece("e7-bot-B","B","Bpat","bot", BOT2.cx, BOT2.cy+20, {duplicated:true, rot:90})
+            mkPiece("e7-left-A","A","Apat","left", LEFT2.cx-18, LEFT2.cy, {duplicated:true, rot:0}),
+            mkPiece("e7-left-B","B","Bmat","left", LEFT2.cx+20, LEFT2.cy, {duplicated:true, rot:0}),
+            mkPiece("e7-right-A","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy, {duplicated:true, rot:0}),
+            mkPiece("e7-right-B","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy, {duplicated:true, rot:0})
           ];
         },
         cells: [
-          { rect: TOP2, axis:"h", nucleus:false, spindle:true, key:"top" },
-          { rect: BOT2, axis:"h", nucleus:false, spindle:true, key:"bot" }
+          { rect: LEFT2, axis:"v", nucleus:false, spindle:true, key:"left" },
+          { rect: RIGHT2, axis:"v", nucleus:false, spindle:true, key:"right" }
         ]
       },
       {
@@ -892,28 +892,28 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         task: "action", actionLabel:"세포질 분열", required: 1, isFinal: true,
         instruction: "아래 「세포질 분열」 버튼을 눌러 생식세포 4개를 완성하세요.",
         onAction: function(){
-          cytokinesisSplit("top", [
-            { key:"tl", rect: TL, nucleus:true }, { key:"tr", rect: TR, nucleus:true }
-          ], function(piece){ return piece.x < TOP2.cx ? "tl" : "tr"; }, [[-22,0,70],[22,0,110]]);
-          cytokinesisSplit("bot", [
-            { key:"bl", rect: BL, nucleus:true }, { key:"br", rect: BR, nucleus:true }
-          ], function(piece){ return piece.x < BOT2.cx ? "bl" : "br"; }, [[-22,0,70],[22,0,110]]);
+          cytokinesisSplit("left", [
+            { key:"tl", rect: TL, nucleus:true }, { key:"bl", rect: BL, nucleus:true }
+          ], function(piece){ return piece.y < LEFT2.cy ? "tl" : "bl"; }, [[0,-18,70],[0,20,110]]);
+          cytokinesisSplit("right", [
+            { key:"tr", rect: TR, nucleus:true }, { key:"br", rect: BR, nucleus:true }
+          ], function(piece){ return piece.y < RIGHT2.cy ? "tr" : "br"; }, [[0,-18,70],[0,20,110]]);
         },
         initPieces: function(){
           return [
-            mkPiece("e8-top-Al","A","Apat","top", TOP2.cx-78, TOP2.cy-18, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-top-Ar","A","Apat","top", TOP2.cx+78, TOP2.cy-18, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-top-Bl","B","Bmat","top", TOP2.cx-78, TOP2.cy+20, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-top-Br","B","Bmat","top", TOP2.cx+78, TOP2.cy+20, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-bot-Al","A","Amat","bot", BOT2.cx-78, BOT2.cy-18, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-bot-Ar","A","Amat","bot", BOT2.cx+78, BOT2.cy-18, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-bot-Bl","B","Bpat","bot", BOT2.cx-78, BOT2.cy+20, { rot:0, draggable:false, locked:true }),
-            mkPiece("e8-bot-Br","B","Bpat","bot", BOT2.cx+78, BOT2.cy+20, { rot:0, draggable:false, locked:true })
+            mkPiece("e8-left-At","A","Apat","left", LEFT2.cx-18, LEFT2.cy-78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Ab","A","Apat","left", LEFT2.cx-18, LEFT2.cy+78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Bt","B","Bmat","left", LEFT2.cx+20, LEFT2.cy-78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Bb","B","Bmat","left", LEFT2.cx+20, LEFT2.cy+78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-At","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy-78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Ab","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy+78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Bt","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy-78, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Bb","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy+78, { rot:90, draggable:false, locked:true })
           ];
         },
         cells: [
-          { rect: TOP2, axis:"h", nucleus:false, spindle:true, key:"top" },
-          { rect: BOT2, axis:"h", nucleus:false, spindle:true, key:"bot" }
+          { rect: LEFT2, axis:"v", nucleus:false, spindle:true, key:"left" },
+          { rect: RIGHT2, axis:"v", nucleus:false, spindle:true, key:"right" }
         ]
       }
     ];
