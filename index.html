@@ -1,0 +1,826 @@
+<title>세포분열 실험실</title>
+<meta name="description" content="중3 과학 교과서 기반 체세포분열·생식세포분열(감수분열) 비교 시뮬레이터">
+<style>
+:root{
+  --bg:#eef2ef;
+  --surface:#ffffff;
+  --surface-2:#e4ebe7;
+  --ink:#132420;
+  --muted:#5c6d66;
+  --line:#d3ddd8;
+  --accent:#0f766e;
+  --accent-ink:#ffffff;
+  --accent-soft:#d4ede8;
+  --warn:#b3261e;
+  --warn-soft:#fbe4e1;
+
+  --chrom-a-dark:#b3261e;
+  --chrom-a-light:#eaa398;
+  --chrom-b-dark:#1d4e89;
+  --chrom-b-light:#8db3de;
+
+  --scope-ring:#c6d3cd;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1512;
+    --surface:#122019;
+    --surface-2:#17271f;
+    --ink:#e7f2ee;
+    --muted:#93a89f;
+    --line:#26362e;
+    --accent:#2dd4bf;
+    --accent-ink:#062420;
+    --accent-soft:#123b34;
+    --warn:#f0968b;
+    --warn-soft:#3a1c1a;
+
+    --chrom-a-dark:#e2665a;
+    --chrom-a-light:#f2b6ab;
+    --chrom-b-dark:#5c93d6;
+    --chrom-b-light:#a9c9ec;
+
+    --scope-ring:#20342c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1512;
+  --surface:#122019;
+  --surface-2:#17271f;
+  --ink:#e7f2ee;
+  --muted:#93a89f;
+  --line:#26362e;
+  --accent:#2dd4bf;
+  --accent-ink:#062420;
+  --accent-soft:#123b34;
+  --warn:#f0968b;
+  --warn-soft:#3a1c1a;
+
+  --chrom-a-dark:#e2665a;
+  --chrom-a-light:#f2b6ab;
+  --chrom-b-dark:#5c93d6;
+  --chrom-b-light:#a9c9ec;
+
+  --scope-ring:#20342c;
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'IBM Plex Sans KR','IBM Plex Sans',system-ui,sans-serif;
+  padding-inline:16px;
+  padding-block:20px 40px;
+  max-width:840px;
+  margin:0 auto;
+}
+h1,h2,h3{
+  font-family:'Fraunces','IBM Plex Sans KR',serif;
+  font-weight:600;
+  text-wrap:balance;
+  margin:0;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+
+header{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-bottom:18px;
+}
+header .eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:12px;
+  letter-spacing:.08em;
+  color:var(--accent);
+  text-transform:uppercase;
+}
+header h1{font-size:clamp(24px,5vw,32px);}
+header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+}
+
+/* mode switch */
+.modes{
+  display:flex;
+  gap:6px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:4px;
+  margin:16px 0;
+}
+.modes button{
+  flex:1;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-weight:600;
+  font-size:13.5px;
+  padding:9px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  transition:background .18s ease, color .18s ease;
+}
+.modes button.active{
+  background:var(--accent);
+  color:var(--accent-ink);
+}
+.modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* stage */
+.stage-wrap{margin-top:14px;}
+.scope{
+  position:relative;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 50% 46%, var(--surface) 0%, var(--surface) 62%, var(--surface-2) 100%);
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+.scope svg{display:block;width:100%;height:auto;}
+.scope .ring{
+  position:absolute;inset:6px;
+  border-radius:50%;
+  border:1px dashed var(--scope-ring);
+  pointer-events:none;
+}
+.stage-caption{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:4px 8px;
+  margin-top:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* timeline */
+.timeline{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  padding:10px 2px 4px;
+  margin-top:10px;
+  scrollbar-width:thin;
+}
+.timeline button{
+  flex:0 0 auto;
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--muted);
+  font:inherit;
+  font-size:12.5px;
+  font-weight:600;
+  padding:7px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all .15s ease;
+}
+.timeline button.current{
+  background:var(--accent-soft);
+  border-color:var(--accent);
+  color:var(--ink);
+}
+
+/* controls */
+.controls{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+.controls button{
+  border:1px solid var(--line);
+  background:var(--surface);
+  color:var(--ink);
+  font:inherit;
+  font-weight:600;
+  font-size:13.5px;
+  border-radius:10px;
+  padding:9px 12px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.controls button.primary{
+  background:var(--accent);
+  color:var(--accent-ink);
+  border-color:var(--accent);
+}
+.controls button:disabled{opacity:.4;cursor:not-allowed;}
+.controls .count{margin-left:auto;color:var(--muted);font-size:13px;}
+
+/* description panel */
+.desc{margin-top:16px;}
+.desc .badge{
+  display:inline-block;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px;
+  letter-spacing:.04em;
+  padding:3px 9px;
+  border-radius:999px;
+  background:var(--surface-2);
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.desc h2{font-size:20px;margin-bottom:6px;}
+.desc p{line-height:1.65;font-size:14.5px;color:var(--ink);}
+.callout{
+  margin-top:10px;
+  border-left:3px solid var(--warn);
+  background:var(--warn-soft);
+  padding:10px 12px;
+  border-radius:0 10px 10px 0;
+  font-size:13.5px;
+  line-height:1.55;
+}
+
+/* legend */
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:14px;
+  font-size:12.5px;
+  color:var(--muted);
+}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.swatch{width:22px;height:9px;border-radius:5px;display:inline-block;}
+
+/* details / why divide */
+details{margin-top:18px;}
+summary{
+  cursor:pointer;
+  font-weight:600;
+  font-size:14px;
+  color:var(--accent);
+  list-style:none;
+}
+summary::-webkit-details-marker{display:none;}
+summary:before{content:"▸ ";}
+details[open] summary:before{content:"▾ ";}
+details .body{margin-top:8px;font-size:13.5px;line-height:1.6;color:var(--muted);}
+
+/* comparison table */
+.compare{margin-top:26px;}
+.compare h2{font-size:19px;margin-bottom:10px;}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:13.5px;}
+thead th{
+  text-align:left;
+  background:var(--surface-2);
+  padding:10px 14px;
+  font-weight:700;
+  border-bottom:1px solid var(--line);
+}
+tbody td{
+  padding:10px 14px;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+tbody tr:last-child td{border-bottom:none;}
+td.label{color:var(--muted);font-weight:600;white-space:nowrap;}
+td.mit{color:var(--chrom-a-dark);}
+td.mei{color:var(--chrom-b-dark);}
+
+footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
+
+@media (prefers-reduced-motion: reduce){
+  * {transition-duration:.001ms !important;}
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<header>
+  <span class="eyebrow">중3 과학 · 생식과 유전</span>
+  <h1>세포분열 실험실</h1>
+  <p>체세포분열과 생식세포분열(감수분열)을 단계별로 관찰하고, 염색체의 행동 차이를 비교합니다.</p>
+</header>
+
+<div class="modes" role="tablist" aria-label="분열 방식 선택">
+  <button id="btn-mitosis" class="active" role="tab" aria-selected="true">체세포분열</button>
+  <button id="btn-meiosis" role="tab" aria-selected="false">생식세포분열 (감수분열)</button>
+</div>
+
+<div class="stage-wrap">
+  <div class="scope card" id="scope">
+    <div class="ring"></div>
+    <svg id="svg" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" aria-label="세포분열 단계 그림"></svg>
+  </div>
+  <div class="stage-caption">
+    <span id="phase-group" class="mono"></span>
+    <span id="cell-count"></span>
+  </div>
+</div>
+
+<div class="timeline" id="timeline"></div>
+
+<div class="controls">
+  <button id="prev">◀ 이전</button>
+  <button id="play" class="primary">▶ 재생</button>
+  <button id="next">다음 ▶</button>
+  <span class="count mono" id="step-count">1 / 5</span>
+</div>
+
+<div class="desc card">
+  <span class="badge" id="step-badge">간기</span>
+  <h2 id="step-title"></h2>
+  <p id="step-desc"></p>
+  <div class="callout" id="callout" hidden></div>
+</div>
+
+<div class="legend">
+  <span><i class="swatch" style="background:var(--chrom-a-dark)"></i>큰 염색체 · 아버지 유래</span>
+  <span><i class="swatch" style="background:var(--chrom-a-light)"></i>큰 염색체 · 어머니 유래</span>
+  <span><i class="swatch" style="background:var(--chrom-b-dark)"></i>작은 염색체 · 아버지 유래</span>
+  <span><i class="swatch" style="background:var(--chrom-b-light)"></i>작은 염색체 · 어머니 유래</span>
+</div>
+
+<details>
+  <summary>세포는 왜 분열할까?</summary>
+  <div class="body">
+    세포가 커지면 부피에 비해 표면적이 상대적으로 작아져 물질 교환(산소·영양분 흡수, 노폐물 배출)이 비효율적으로 느려집니다.
+    그래서 세포는 일정 크기 이상 커지면 하나로 계속 자라는 대신 <b>분열</b>하여 표면적/부피 비를 다시 크게 만듭니다.
+    체세포분열은 몸의 생장·재생에, 생식세포분열(감수분열)은 자손을 만드는 생식세포(정자·난자) 형성에 쓰입니다.
+  </div>
+</details>
+
+<div class="compare">
+  <h2>한눈에 비교하기</h2>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>구분</th><th class="mit">체세포분열</th><th class="mei">생식세포분열(감수분열)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="label">분열 횟수</td><td>1회</td><td>연속 2회 (감수 1분열 → 감수 2분열)</td></tr>
+        <tr><td class="label">딸세포 수</td><td>2개</td><td>4개</td></tr>
+        <tr><td class="label">염색체 수 변화</td><td>변화 없음 (2n → 2n)</td><td>절반으로 감소 (2n → n)</td></tr>
+        <tr><td class="label">상동염색체 접합</td><td>일어나지 않음</td><td>전기Ⅰ에서 2가염색체(사분체) 형성</td></tr>
+        <tr><td class="label">딸세포의 유전 정보</td><td>모세포와 동일</td><td>서로 다를 수 있음 (유전적 다양성)</td></tr>
+        <tr><td class="label">일어나는 장소</td><td>몸 전체의 체세포 (생장·재생)</td><td>생식기관 (정소·난소)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>중학교 3학년 과학 「생식과 유전」 단원 학습 보조 자료 · 염색체 수는 2n=4로 단순화하여 표현</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.getElementById("svg");
+
+  var COLOR = {
+    Apat: "var(--chrom-a-dark)",
+    Amat: "var(--chrom-a-light)",
+    Bpat: "var(--chrom-b-dark)",
+    Bmat: "var(--chrom-b-light)"
+  };
+  var LEN = { A: 46, B: 30 };
+
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function rod(cx, cy, len, color, rotDeg){
+    var r = el("rect", {
+      x: -len/2, y: -4.5, width: len, height: 9, rx: 4.5,
+      fill: color,
+      transform: "translate(" + cx + " " + cy + ") rotate(" + rotDeg + ")"
+    });
+    return r;
+  }
+
+  function dot(cx, cy){
+    return el("circle", { cx: cx, cy: cy, r: 3.2, fill: "var(--ink)", opacity: 0.5 });
+  }
+
+  // chromosome: pair 'A' or 'B', duplicated true => X shape, rot in degrees (0=horizontal,90=vertical)
+  function chromosome(g, cx, cy, colorKey, pair, duplicated, rot){
+    rot = rot === undefined ? 90 : rot;
+    var len = LEN[pair];
+    var color = COLOR[colorKey];
+    if (duplicated){
+      g.appendChild(rod(cx, cy, len, color, rot - 21));
+      g.appendChild(rod(cx, cy, len, color, rot + 21));
+    } else {
+      g.appendChild(rod(cx, cy, len, color, rot));
+    }
+    g.appendChild(dot(cx, cy));
+  }
+
+  // wavy chromatin thread for interphase
+  function thread(g, cx, cy, colorKey, seed){
+    var d = "M " + (cx - 34) + " " + cy;
+    for (var i = -3; i <= 3; i++){
+      var x = cx + i * 11;
+      var y = cy + Math.sin(i + seed) * 13;
+      d += " L " + x + " " + y;
+    }
+    var p = el("path", {
+      d: d, fill: "none", stroke: COLOR[colorKey],
+      "stroke-width": 6, "stroke-linecap": "round", "stroke-linejoin": "round",
+      opacity: 0.85
+    });
+    g.appendChild(p);
+  }
+
+  function cellShape(g, c, opts){
+    opts = opts || {};
+    g.appendChild(el("ellipse", {
+      cx: c.cx, cy: c.cy, rx: c.rx, ry: c.ry,
+      fill: "none", stroke: "var(--muted)", "stroke-width": 2, opacity: 0.55
+    }));
+    if (opts.nucleus){
+      g.appendChild(el("ellipse", {
+        cx: c.cx, cy: c.cy, rx: c.rx * 0.62, ry: c.ry * 0.62,
+        fill: "none", stroke: "var(--muted)", "stroke-width": 1.4,
+        "stroke-dasharray": "3 4", opacity: 0.55
+      }));
+    }
+  }
+
+  function spindle(g, c, axis){
+    var apex1, apex2;
+    if (axis === "v"){
+      apex1 = { x: c.cx, y: c.cy - c.ry - 34 };
+      apex2 = { x: c.cx, y: c.cy + c.ry + 34 };
+    } else {
+      apex1 = { x: c.cx - c.rx - 34, y: c.cy };
+      apex2 = { x: c.cx + c.rx + 34, y: c.cy };
+    }
+    [-0.55,-0.28,0,0.28,0.55].forEach(function(f){
+      var ex = c.cx + (axis === "v" ? c.rx * f : 0);
+      var ey = c.cy + (axis === "v" ? 0 : c.ry * f);
+      [apex1, apex2].forEach(function(ap){
+        g.appendChild(el("line", {
+          x1: ap.x, y1: ap.y, x2: ex, y2: ey,
+          stroke: "var(--muted)", "stroke-width": 1, opacity: 0.32
+        }));
+      });
+    });
+  }
+
+  function equator(g, c, axis){
+    if (axis === "v"){
+      g.appendChild(el("line", {
+        x1: c.cx - c.rx * 0.8, y1: c.cy, x2: c.cx + c.rx * 0.8, y2: c.cy,
+        stroke: "var(--accent)", "stroke-width": 1.4, "stroke-dasharray": "5 5", opacity: 0.6
+      }));
+    } else {
+      g.appendChild(el("line", {
+        x1: c.cx, y1: c.cy - c.ry * 0.8, x2: c.cx, y2: c.cy + c.ry * 0.8,
+        stroke: "var(--accent)", "stroke-width": 1.4, "stroke-dasharray": "5 5", opacity: 0.6
+      }));
+    }
+  }
+
+  // ---- cell layout presets ----
+  var SINGLE = { cx: 320, cy: 220, rx: 190, ry: 150 };
+  var TOP2   = { cx: 320, cy: 128, rx: 175, ry: 95 };
+  var BOT2   = { cx: 320, cy: 322, rx: 175, ry: 95 };
+  var TL = { cx: 165, cy: 118, rx: 128, ry: 82 };
+  var TR = { cx: 475, cy: 118, rx: 128, ry: 82 };
+  var BL = { cx: 165, cy: 330, rx: 128, ry: 82 };
+  var BR = { cx: 475, cy: 330, rx: 128, ry: 82 };
+
+  function pt(c, dx, dy){ return { x: c.cx + dx, y: c.cy + dy }; }
+
+  // =====================================================================
+  // MITOSIS STEPS
+  // =====================================================================
+  var mitosis = [
+    { badge: "간기 (interphase)", title: "간기 — 준비 단계",
+      desc: "DNA가 복제되어 유전 정보가 2배로 늘어나지만, 염색체는 아직 가늘고 긴 실(염색사) 형태로 풀어져 있어 하나하나 구분해 관찰할 수 없다.",
+      draw: function(g){
+        cellShape(g, SINGLE, { nucleus: true });
+        var p = pt(SINGLE, -78, -46); thread(g, p.x, p.y, "Apat", 0.2);
+        p = pt(SINGLE, 74, -58); thread(g, p.x, p.y, "Amat", 1.1);
+        p = pt(SINGLE, -66, 52); thread(g, p.x, p.y, "Bpat", 2.0);
+        p = pt(SINGLE, 70, 60); thread(g, p.x, p.y, "Bmat", 2.8);
+      }
+    },
+    { badge: "전기 (prophase)", title: "전기 — 염색체 등장",
+      desc: "염색사가 굵고 짧게 응축되어 막대 모양의 염색체로 보이기 시작한다. 염색체 하나하나는 2개의 염색분체가 붙어 있는 X자 모양이다. 핵막이 사라지고 방추사가 나타난다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        var p;
+        p = pt(SINGLE, -92, -72); chromosome(g, p.x, p.y, "Apat", "A", true, 68);
+        p = pt(SINGLE, 82, -80);  chromosome(g, p.x, p.y, "Amat", "A", true, 115);
+        p = pt(SINGLE, -86, 58);  chromosome(g, p.x, p.y, "Bpat", "B", true, 100);
+        p = pt(SINGLE, 88, 66);   chromosome(g, p.x, p.y, "Bmat", "B", true, 75);
+      }
+    },
+    { badge: "중기 (metaphase)", title: "중기 — 적도판 정렬",
+      desc: "염색체가 세포 중앙(적도판)에 한 줄로 배열된다. 염색체의 모양이 가장 뚜렷해 관찰하기 좋은 시기이다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        equator(g, SINGLE, "v");
+        chromosome(g, SINGLE.cx, SINGLE.cy - 88, "Apat", "A", true, 0);
+        chromosome(g, SINGLE.cx, SINGLE.cy - 30, "Amat", "A", true, 0);
+        chromosome(g, SINGLE.cx, SINGLE.cy + 30, "Bpat", "B", true, 0);
+        chromosome(g, SINGLE.cx, SINGLE.cy + 88, "Bmat", "B", true, 0);
+      }
+    },
+    { badge: "후기 (anaphase)", title: "후기 — 염색분체 분리",
+      desc: "방추사가 짧아지면서 염색체를 이루던 염색분체가 둘로 나뉘어 서로 다른 극으로 이동한다. 분리된 각 가닥은 이제 염색분체 1개짜리 홑염색체이며, 양쪽 극에 완전히 같은 세트가 모인다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        [-60,-20,20,60].forEach(function(dx, i){
+          var keys = ["Apat","Amat","Bpat","Bmat"];
+          var pairs = ["A","A","B","B"];
+          var pTop = pt(SINGLE, dx, -104);
+          var pBot = pt(SINGLE, dx, 104);
+          chromosome(g, pTop.x, pTop.y, keys[i], pairs[i], false, 90);
+          chromosome(g, pBot.x, pBot.y, keys[i], pairs[i], false, 90);
+        });
+      }
+    },
+    { badge: "말기 · 세포질분열", title: "말기와 세포질분열 — 딸세포 완성",
+      desc: "양 극에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
+      draw: function(g){
+        cellShape(g, TOP2, { nucleus: true });
+        cellShape(g, BOT2, { nucleus: true });
+        [TOP2, BOT2].forEach(function(c){
+          var offs = [[-58,-14],[-18,14],[20,-12],[58,12]];
+          var keys = ["Apat","Amat","Bpat","Bmat"];
+          var pairs = ["A","A","B","B"];
+          offs.forEach(function(o,i){
+            var p = pt(c, o[0], o[1]);
+            chromosome(g, p.x, p.y, keys[i], pairs[i], false, 70 + i*15);
+          });
+        });
+      }
+    }
+  ];
+
+  // =====================================================================
+  // MEIOSIS STEPS
+  // =====================================================================
+  var meiosis = [
+    { badge: "간기 (interphase)", title: "간기 — 준비 단계",
+      desc: "체세포분열과 마찬가지로 DNA가 복제되어 유전 정보가 2배가 된다. 염색체는 아직 실 모양으로 풀어져 있다.",
+      draw: function(g){
+        cellShape(g, SINGLE, { nucleus: true });
+        var p = pt(SINGLE, -78, -46); thread(g, p.x, p.y, "Apat", 0.2);
+        p = pt(SINGLE, 74, -58); thread(g, p.x, p.y, "Amat", 1.1);
+        p = pt(SINGLE, -66, 52); thread(g, p.x, p.y, "Bpat", 2.0);
+        p = pt(SINGLE, 70, 60); thread(g, p.x, p.y, "Bmat", 2.8);
+      }
+    },
+    { badge: "전기Ⅰ", title: "전기Ⅰ — 상동염색체의 접합",
+      desc: "염색체가 응축되어 나타나는 것은 체세포분열과 같지만, 여기서는 크기와 모양이 같은 상동염색체끼리 서로 짝을 지어 접합한다. 이렇게 만들어진 4가닥짜리 묶음을 2가염색체(사분체)라고 한다.",
+      callout: "2가염색체(사분체) 형성은 감수분열에서만 일어나는 단계! 체세포분열의 전기에는 없다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        chromosome(g, SINGLE.cx - 88, SINGLE.cy - 78, "Apat", "A", true, 60);
+        chromosome(g, SINGLE.cx - 66, SINGLE.cy - 60, "Amat", "A", true, 105);
+        chromosome(g, SINGLE.cx + 82, SINGLE.cy + 62, "Bpat", "B", true, 95);
+        chromosome(g, SINGLE.cx + 60, SINGLE.cy + 80, "Bmat", "B", true, 60);
+      }
+    },
+    { badge: "중기Ⅰ", title: "중기Ⅰ — 2가염색체의 정렬",
+      desc: "2가염색체(상동염색체 한 쌍이 접합된 상태) 그대로 적도판에 배열된다. 체세포분열의 중기와 달리, 염색체가 한 개씩이 아니라 상동염색체 쌍 단위로 늘어선다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        equator(g, SINGLE, "v");
+        chromosome(g, SINGLE.cx - 10, SINGLE.cy - 58, "Apat", "A", true, 0);
+        chromosome(g, SINGLE.cx + 10, SINGLE.cy - 34, "Amat", "A", true, 0);
+        chromosome(g, SINGLE.cx - 10, SINGLE.cy + 34, "Bpat", "B", true, 0);
+        chromosome(g, SINGLE.cx + 10, SINGLE.cy + 58, "Bmat", "B", true, 0);
+      }
+    },
+    { badge: "후기Ⅰ", title: "후기Ⅰ — 상동염색체 분리",
+      desc: "염색분체가 아니라 상동염색체 전체(2가염색체를 이루던 두 염색체)가 통째로 분리되어 서로 다른 극으로 이동한다. 이때문에 염색체 수가 절반으로 줄어든다 — 감수분열만의 핵심 특징이다.",
+      callout: "체세포분열의 후기는 염색분체가 분리되지만, 감수분열의 후기Ⅰ은 상동염색체 자체가 분리된다.",
+      draw: function(g){
+        cellShape(g, SINGLE, {});
+        spindle(g, SINGLE, "v");
+        var pTop1 = pt(SINGLE, -34, -100); chromosome(g, pTop1.x, pTop1.y, "Apat", "A", true, 90);
+        var pTop2 = pt(SINGLE, 34, -100);  chromosome(g, pTop2.x, pTop2.y, "Bmat", "B", true, 90);
+        var pBot1 = pt(SINGLE, -34, 100);  chromosome(g, pBot1.x, pBot1.y, "Amat", "A", true, 90);
+        var pBot2 = pt(SINGLE, 34, 100);   chromosome(g, pBot2.x, pBot2.y, "Bpat", "B", true, 90);
+      }
+    },
+    { badge: "말기Ⅰ · 세포질분열", title: "말기Ⅰ과 세포질분열 — 염색체 수 반감",
+      desc: "세포질이 갈라져 2개의 세포가 만들어진다. 각 세포의 염색체 수는 모세포의 절반(n=2)이다. 단, 각 염색체는 여전히 2개의 염색분체로 이루어져 있다 — 아직 감수 2분열이 남아 있다.",
+      draw: function(g){
+        cellShape(g, TOP2, {});
+        cellShape(g, BOT2, {});
+        var t1 = pt(TOP2, -46, 0); chromosome(g, t1.x, t1.y, "Apat", "A", true, 100);
+        var t2 = pt(TOP2, 46, 0);  chromosome(g, t2.x, t2.y, "Bmat", "B", true, 80);
+        var b1 = pt(BOT2, -46, 0); chromosome(g, b1.x, b1.y, "Amat", "A", true, 100);
+        var b2 = pt(BOT2, 46, 0);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 80);
+      }
+    },
+    { badge: "전기Ⅱ", title: "전기Ⅱ — 두 세포에서 동시에",
+      desc: "감수 1분열 뒤 간기(DNA 복제) 없이 곧바로 감수 2분열이 시작된다. 두 세포에서 각각 방추사가 다시 나타난다.",
+      draw: function(g){
+        cellShape(g, TOP2, {});
+        cellShape(g, BOT2, {});
+        spindle(g, TOP2, "h");
+        spindle(g, BOT2, "h");
+        var t1 = pt(TOP2, -50, -14); chromosome(g, t1.x, t1.y, "Apat", "A", true, 25);
+        var t2 = pt(TOP2, 48, 16);   chromosome(g, t2.x, t2.y, "Bmat", "B", true, -15);
+        var b1 = pt(BOT2, -50, 16);  chromosome(g, b1.x, b1.y, "Amat", "A", true, -20);
+        var b2 = pt(BOT2, 48, -14);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 20);
+      }
+    },
+    { badge: "중기Ⅱ", title: "중기Ⅱ — 각자의 적도판 정렬",
+      desc: "각 세포 안에서 염색체가 자기 세포의 적도판에 한 줄로 배열된다. 체세포분열의 중기와 같은 원리이지만, 염색체 수가 절반(n)이라는 점이 다르다.",
+      draw: function(g){
+        cellShape(g, TOP2, {});
+        cellShape(g, BOT2, {});
+        spindle(g, TOP2, "h");
+        spindle(g, BOT2, "h");
+        equator(g, TOP2, "h");
+        equator(g, BOT2, "h");
+        var t1 = pt(TOP2, 0, -18); chromosome(g, t1.x, t1.y, "Apat", "A", true, 90);
+        var t2 = pt(TOP2, 0, 20);  chromosome(g, t2.x, t2.y, "Bmat", "B", true, 90);
+        var b1 = pt(BOT2, 0, -18); chromosome(g, b1.x, b1.y, "Amat", "A", true, 90);
+        var b2 = pt(BOT2, 0, 20);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 90);
+      }
+    },
+    { badge: "후기Ⅱ", title: "후기Ⅱ — 염색분체 분리",
+      desc: "이번에는 체세포분열의 후기처럼 염색분체가 분리되어 각 세포 안에서 좌우로 이동한다.",
+      draw: function(g){
+        cellShape(g, TOP2, {});
+        cellShape(g, BOT2, {});
+        spindle(g, TOP2, "h");
+        spindle(g, BOT2, "h");
+        var tl1 = pt(TOP2, -78, -18); chromosome(g, tl1.x, tl1.y, "Apat", "A", false, 0);
+        var tr1 = pt(TOP2, 78, -18);  chromosome(g, tr1.x, tr1.y, "Apat", "A", false, 0);
+        var tl2 = pt(TOP2, -78, 20);  chromosome(g, tl2.x, tl2.y, "Bmat", "B", false, 0);
+        var tr2 = pt(TOP2, 78, 20);   chromosome(g, tr2.x, tr2.y, "Bmat", "B", false, 0);
+        var bl1 = pt(BOT2, -78, -18); chromosome(g, bl1.x, bl1.y, "Amat", "A", false, 0);
+        var br1 = pt(BOT2, 78, -18);  chromosome(g, br1.x, br1.y, "Amat", "A", false, 0);
+        var bl2 = pt(BOT2, -78, 20);  chromosome(g, bl2.x, bl2.y, "Bpat", "B", false, 0);
+        var br2 = pt(BOT2, 78, 20);   chromosome(g, br2.x, br2.y, "Bpat", "B", false, 0);
+      }
+    },
+    { badge: "말기Ⅱ · 세포질분열", title: "말기Ⅱ와 세포질분열 — 생식세포 4개 완성",
+      desc: "세포질분열이 한 번 더 일어나 총 4개의 딸세포(생식세포)가 만들어진다. 각 생식세포의 염색체 수는 n=2로 모세포의 절반이며, 상동염색체가 무작위로 나뉘어 들어갔기 때문에 4개의 세포는 유전적으로 서로 다를 수 있다.",
+      callout: "체세포분열은 딸세포 2개(2n) · 생식세포분열은 딸세포 4개(n) — 염색체 수와 개수가 모두 다르게 끝난다.",
+      draw: function(g){
+        cellShape(g, TL, { nucleus: true });
+        cellShape(g, TR, { nucleus: true });
+        cellShape(g, BL, { nucleus: true });
+        cellShape(g, BR, { nucleus: true });
+        [TL, TR].forEach(function(c){
+          var p1 = pt(c, -22, 0); chromosome(g, p1.x, p1.y, "Apat", "A", false, 70);
+          var p2 = pt(c, 22, 0);  chromosome(g, p2.x, p2.y, "Bmat", "B", false, 110);
+        });
+        [BL, BR].forEach(function(c){
+          var p1 = pt(c, -22, 0); chromosome(g, p1.x, p1.y, "Amat", "A", false, 70);
+          var p2 = pt(c, 22, 0);  chromosome(g, p2.x, p2.y, "Bpat", "B", false, 110);
+        });
+      }
+    }
+  ];
+
+  // =====================================================================
+  // UI wiring
+  // =====================================================================
+  var state = { mode: "mitosis", step: 0, playing: false, timer: null };
+
+  var btnMitosis = document.getElementById("btn-mitosis");
+  var btnMeiosis = document.getElementById("btn-meiosis");
+  var timelineEl = document.getElementById("timeline");
+  var prevBtn = document.getElementById("prev");
+  var nextBtn = document.getElementById("next");
+  var playBtn = document.getElementById("play");
+  var stepCount = document.getElementById("step-count");
+  var stepBadge = document.getElementById("step-badge");
+  var stepTitle = document.getElementById("step-title");
+  var stepDesc = document.getElementById("step-desc");
+  var calloutEl = document.getElementById("callout");
+  var phaseGroup = document.getElementById("phase-group");
+  var cellCount = document.getElementById("cell-count");
+
+  function steps(){ return state.mode === "mitosis" ? mitosis : meiosis; }
+
+  function render(){
+    var list = steps();
+    var s = list[state.step];
+
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var g = el("g", { style: "transition: opacity .2s ease" });
+    svg.appendChild(g);
+    s.draw(g);
+
+    stepBadge.textContent = s.badge;
+    stepTitle.textContent = s.title;
+    stepDesc.textContent = s.desc;
+    if (s.callout){
+      calloutEl.hidden = false;
+      calloutEl.textContent = "⚠ " + s.callout;
+    } else {
+      calloutEl.hidden = true;
+    }
+
+    stepCount.textContent = (state.step + 1) + " / " + list.length;
+    phaseGroup.textContent = state.mode === "mitosis" ? "체세포분열" : "감수분열(생식세포분열)";
+    var cellNums = { 0:1,1:1,2:1,3:1,4:2 };
+    var n;
+    if (state.mode === "mitosis"){
+      n = state.step < 4 ? 1 : 2;
+    } else {
+      n = state.step < 4 ? 1 : (state.step < 8 ? 2 : 4);
+    }
+    cellCount.textContent = "세포 수: " + n;
+
+    prevBtn.disabled = state.step === 0;
+    nextBtn.disabled = state.step === list.length - 1;
+
+    renderTimeline();
+  }
+
+  function renderTimeline(){
+    var list = steps();
+    timelineEl.innerHTML = "";
+    list.forEach(function(s, i){
+      var b = document.createElement("button");
+      b.textContent = s.badge;
+      if (i === state.step) b.className = "current";
+      b.addEventListener("click", function(){
+        stopPlay();
+        state.step = i;
+        render();
+      });
+      timelineEl.appendChild(b);
+    });
+  }
+
+  function setMode(mode){
+    stopPlay();
+    state.mode = mode;
+    state.step = 0;
+    btnMitosis.classList.toggle("active", mode === "mitosis");
+    btnMeiosis.classList.toggle("active", mode === "meiosis");
+    btnMitosis.setAttribute("aria-selected", mode === "mitosis");
+    btnMeiosis.setAttribute("aria-selected", mode === "meiosis");
+    render();
+  }
+
+  function go(delta){
+    var list = steps();
+    var next = state.step + delta;
+    if (next < 0 || next >= list.length){
+      stopPlay();
+      return;
+    }
+    state.step = next;
+    render();
+  }
+
+  function stopPlay(){
+    state.playing = false;
+    playBtn.textContent = "▶ 재생";
+    if (state.timer){ clearInterval(state.timer); state.timer = null; }
+  }
+
+  function togglePlay(){
+    if (state.playing){ stopPlay(); return; }
+    var list = steps();
+    if (state.step >= list.length - 1) state.step = 0;
+    state.playing = true;
+    playBtn.textContent = "⏸ 정지";
+    state.timer = setInterval(function(){
+      var list2 = steps();
+      if (state.step >= list2.length - 1){ stopPlay(); return; }
+      state.step += 1;
+      render();
+    }, 1800);
+    render();
+  }
+
+  btnMitosis.addEventListener("click", function(){ setMode("mitosis"); });
+  btnMeiosis.addEventListener("click", function(){ setMode("meiosis"); });
+  prevBtn.addEventListener("click", function(){ stopPlay(); go(-1); });
+  nextBtn.addEventListener("click", function(){ stopPlay(); go(1); });
+  playBtn.addEventListener("click", togglePlay);
+
+  render();
+})();
+</script>
