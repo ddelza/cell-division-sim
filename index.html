@@ -444,7 +444,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 <header>
   <span class="eyebrow">중3 과학 · 생식과 유전 · 인터랙티브</span>
   <h1>세포분열 실험실</h1>
-  <p>염색체를 우클릭해 복제·응축하고, 드래그로 적도판에 배열한 뒤, 분열 버튼을 눌러 체세포분열·생식세포분열(감수분열)을 직접 진행해 보세요.</p>
+  <p>염색체를 우클릭(모바일은 꾹 누르기)해 복제·응축하고, 드래그로 적도판에 배열한 뒤, 분열 버튼을 눌러 체세포분열·생식세포분열(감수분열)을 직접 진행해 보세요.</p>
 </header>
 
 <div class="modes" role="tablist" aria-label="분열 방식 선택">
@@ -522,7 +522,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   </div>
 </div>
 
-<footer>중학교 3학년 과학 「생식과 유전」 단원 학습 보조 자료 · 염색체 수는 2n=4로 단순화하여 표현 · 우클릭(복제/응축)과 드래그, 분열 버튼으로 조작</footer>
+<footer>중학교 3학년 과학 「생식과 유전」 단원 학습 보조 자료 · 염색체 수는 2n=4로 단순화하여 표현 · 우클릭 또는 꾹 누르기(복제/응축)와 드래그, 분열 버튼으로 조작</footer>
 
 <ul id="ctxMenu" class="context-menu">
   <li data-action="replicate">복제하기</li>
@@ -721,7 +721,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         key: "interphase-prophase", badge: "간기 → 전기", title: "간기·전기 — 복제와 응축",
         desc: "간기 동안 DNA가 복제되어 유전 정보가 2배가 된다. 전기에는 염색사가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
         task: "replicate", required: 4,
-        instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
+        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
         initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
         cells: [{ rect: SINGLE, axis: "h", nucleus: false }]
       },
@@ -780,7 +780,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         key: "interphase-prophase1", badge: "간기 → 전기Ⅰ", title: "간기·전기Ⅰ — 복제와 응축",
         desc: "체세포분열과 마찬가지로 DNA가 복제되어 유전 정보가 2배가 되고, 이어서 염색체가 응축되어 나타난다.",
         task: "replicate", required: 4,
-        instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
+        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
         initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
         cells: [{ rect: SINGLE, axis:"h", nucleus:false }]
       },
@@ -1042,9 +1042,34 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   // ---------------- drag & interaction ----------------
   var drag = null;
 
+  var LONG_PRESS_MS = 480;
+  var LONG_PRESS_MOVE_TOLERANCE = 12;
+
   function attachHandlers(piece, g){
     g.addEventListener("pointerdown", function(e){ onPointerDown(e, piece, g); });
     g.addEventListener("contextmenu", function(e){ e.preventDefault(); onRightClick(piece, e); });
+
+    // touch/pen have no right-click: a long-press stands in for it
+    var pressTimer = null, pressStartX = 0, pressStartY = 0, longPressFired = false;
+    g.addEventListener("pointerdown", function(e){
+      if (e.pointerType === "mouse") return;
+      pressStartX = e.clientX; pressStartY = e.clientY; longPressFired = false;
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(function(){
+        longPressFired = true;
+        if (navigator.vibrate) navigator.vibrate(15);
+        onRightClick(piece, e);
+      }, LONG_PRESS_MS);
+    });
+    g.addEventListener("pointermove", function(e){
+      if (e.pointerType === "mouse" || !pressTimer) return;
+      if (Math.hypot(e.clientX - pressStartX, e.clientY - pressStartY) > LONG_PRESS_MOVE_TOLERANCE){
+        clearTimeout(pressTimer); pressTimer = null;
+      }
+    });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(evt){
+      g.addEventListener(evt, function(){ clearTimeout(pressTimer); pressTimer = null; });
+    });
   }
 
   function onPointerDown(e, piece, g){
