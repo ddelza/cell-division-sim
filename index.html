@@ -1,5 +1,5 @@
 <title>세포분열 실험실</title>
-<meta name="description" content="중3 과학 교과서 기반 체세포분열·생식세포분열(감수분열) 비교 시뮬레이터">
+<meta name="description" content="중3 과학 교과서 기반 체세포분열·생식세포분열(감수분열) 인터랙티브 시뮬레이터 — 우클릭 복제·응축, 드래그 정렬, 분열 버튼으로 직접 진행">
 <style>
 :root{
   --bg:#eef2ef;
@@ -13,6 +13,8 @@
   --accent-soft:#d4ede8;
   --warn:#b3261e;
   --warn-soft:#fbe4e1;
+  --good:#1c7a4a;
+  --good-soft:#dcf1e3;
 
   --chrom-a-dark:#b3261e;
   --chrom-a-light:#eaa398;
@@ -34,6 +36,8 @@
     --accent-soft:#123b34;
     --warn:#f0968b;
     --warn-soft:#3a1c1a;
+    --good:#5fd39a;
+    --good-soft:#123a29;
 
     --chrom-a-dark:#e2665a;
     --chrom-a-light:#f2b6ab;
@@ -55,6 +59,8 @@
   --accent-soft:#123b34;
   --warn:#f0968b;
   --warn-soft:#3a1c1a;
+  --good:#5fd39a;
+  --good-soft:#123a29;
 
   --chrom-a-dark:#e2665a;
   --chrom-a-light:#f2b6ab;
@@ -134,8 +140,34 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
 }
 .modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 
+/* instruction bar */
+.instruction{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:14px;
+  padding:10px 14px;
+  border-radius:12px;
+  background:var(--accent-soft);
+  color:var(--ink);
+  font-size:13.5px;
+  font-weight:600;
+  line-height:1.4;
+}
+.instruction.done{background:var(--good-soft);color:var(--good);}
+.instruction .icon{font-size:16px;flex:0 0 auto;}
+.instruction .progress{
+  margin-left:auto;
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+  font-size:12.5px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.instruction.done .progress{color:var(--good);}
+
 /* stage */
-.stage-wrap{margin-top:14px;}
+.stage-wrap{margin-top:10px;position:relative;}
 .scope{
   position:relative;
   border-radius:16px;
@@ -143,6 +175,7 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
     radial-gradient(circle at 50% 46%, var(--surface) 0%, var(--surface) 62%, var(--surface-2) 100%);
   border:1px solid var(--line);
   overflow:hidden;
+  touch-action:none;
 }
 .scope svg{display:block;width:100%;height:auto;}
 .scope .ring{
@@ -150,6 +183,18 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
   border-radius:50%;
   border:1px dashed var(--scope-ring);
   pointer-events:none;
+}
+.piece{cursor:grab;transition:transform .55s cubic-bezier(.2,.7,.3,1);}
+.piece.locked{cursor:default;}
+.piece.dragging{cursor:grabbing;transition:none;}
+.piece.reject{animation:shake .38s ease;}
+.cellring{transition:cx .65s ease, cy .65s ease, rx .65s ease, ry .65s ease, opacity .55s ease;}
+@keyframes shake{
+  0%,100%{ transform: translate(0,0) rotate(0deg); }
+  20%{ transform: translate(-4px,0) rotate(-6deg); }
+  40%{ transform: translate(4px,0) rotate(6deg); }
+  60%{ transform: translate(-3px,0) rotate(-4deg); }
+  80%{ transform: translate(3px,0) rotate(4deg); }
 }
 .stage-caption{
   display:flex;
@@ -160,6 +205,92 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
   margin-top:8px;
   font-size:12px;
   color:var(--muted);
+}
+
+/* right-click context menu */
+.context-menu{
+  position:fixed;
+  z-index:500;
+  list-style:none;
+  margin:0;
+  padding:6px;
+  min-width:150px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+  display:none;
+}
+.context-menu.open{display:block;}
+.context-menu li{
+  padding:9px 12px;
+  border-radius:7px;
+  font-size:13.5px;
+  font-weight:600;
+  cursor:pointer;
+  color:var(--ink);
+}
+.context-menu li:hover{background:var(--accent-soft);}
+.context-menu li.disabled{
+  color:var(--muted);
+  cursor:not-allowed;
+  opacity:.55;
+}
+.context-menu li.disabled:hover{background:transparent;}
+
+/* toast */
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:24px;
+  transform:translateX(-50%) translateY(8px);
+  background:var(--ink);
+  color:var(--bg);
+  padding:10px 18px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:600;
+  box-shadow:0 8px 20px rgba(0,0,0,.2);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
+  z-index:600;
+  max-width:90vw;
+  text-align:center;
+}
+.toast.visible{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* completion modal */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:700;
+  padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:28px;
+  max-width:380px;
+  text-align:center;
+}
+.modal-box .big{font-size:34px;margin-bottom:6px;}
+.modal-box h2{font-size:22px;margin-bottom:8px;}
+.modal-box p{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:18px;}
+.modal-box button{
+  border:none;
+  background:var(--accent);
+  color:var(--accent-ink);
+  font:inherit;
+  font-weight:700;
+  padding:11px 20px;
+  border-radius:10px;
+  cursor:pointer;
 }
 
 /* timeline */
@@ -190,6 +321,10 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
   border-color:var(--accent);
   color:var(--ink);
 }
+.timeline button.solved:not(.current){
+  color:var(--good);
+  border-color:var(--good);
+}
 
 /* controls */
 .controls{
@@ -215,6 +350,10 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
   background:var(--accent);
   color:var(--accent-ink);
   border-color:var(--accent);
+}
+.controls button.ghost{
+  background:transparent;
+  color:var(--muted);
 }
 .controls button:disabled{opacity:.4;cursor:not-allowed;}
 .controls .count{margin-left:auto;color:var(--muted);font-size:13px;}
@@ -295,7 +434,7 @@ td.mei{color:var(--chrom-b-dark);}
 footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 
 @media (prefers-reduced-motion: reduce){
-  * {transition-duration:.001ms !important;}
+  * {transition-duration:.001ms !important; animation-duration:.001ms !important;}
 }
 </style>
 
@@ -303,9 +442,9 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
 <header>
-  <span class="eyebrow">중3 과학 · 생식과 유전</span>
+  <span class="eyebrow">중3 과학 · 생식과 유전 · 인터랙티브</span>
   <h1>세포분열 실험실</h1>
-  <p>체세포분열과 생식세포분열(감수분열)을 단계별로 관찰하고, 염색체의 행동 차이를 비교합니다.</p>
+  <p>염색체를 우클릭해 복제·응축하고, 드래그로 적도판에 배열한 뒤, 분열 버튼을 눌러 체세포분열·생식세포분열(감수분열)을 직접 진행해 보세요.</p>
 </header>
 
 <div class="modes" role="tablist" aria-label="분열 방식 선택">
@@ -313,10 +452,16 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   <button id="btn-meiosis" role="tab" aria-selected="false">생식세포분열 (감수분열)</button>
 </div>
 
+<div class="instruction" id="instruction">
+  <span class="icon">🖱️</span>
+  <span id="instruction-text">불러오는 중…</span>
+  <span class="progress" id="instruction-progress"></span>
+</div>
+
 <div class="stage-wrap">
   <div class="scope card" id="scope">
     <div class="ring"></div>
-    <svg id="svg" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" aria-label="세포분열 단계 그림"></svg>
+    <svg id="svg" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" aria-label="세포분열 조작 화면"></svg>
   </div>
   <div class="stage-caption">
     <span id="phase-group" class="mono"></span>
@@ -328,9 +473,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 
 <div class="controls">
   <button id="prev">◀ 이전</button>
-  <button id="play" class="primary">▶ 재생</button>
-  <button id="next">다음 ▶</button>
-  <span class="count mono" id="step-count">1 / 5</span>
+  <button id="stageAction" class="primary" hidden></button>
+  <button id="reset" class="ghost">↺ 다시하기</button>
+  <button id="solve" class="ghost">정답 보기</button>
+  <button id="next" class="primary">다음 ▶</button>
+  <span class="count mono" id="step-count">1 / 4</span>
 </div>
 
 <div class="desc card">
@@ -375,7 +522,24 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   </div>
 </div>
 
-<footer>중학교 3학년 과학 「생식과 유전」 단원 학습 보조 자료 · 염색체 수는 2n=4로 단순화하여 표현</footer>
+<footer>중학교 3학년 과학 「생식과 유전」 단원 학습 보조 자료 · 염색체 수는 2n=4로 단순화하여 표현 · 우클릭(복제/응축)과 드래그, 분열 버튼으로 조작</footer>
+
+<ul id="ctxMenu" class="context-menu">
+  <li data-action="replicate">복제하기</li>
+  <li data-action="condense">응축하기</li>
+  <li data-action="uncondense">응축 풀기</li>
+</ul>
+
+<div id="toast" class="toast"></div>
+
+<div id="modalOverlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="big">🎉</div>
+    <h2 id="modalTitle">축하합니다!</h2>
+    <p id="modalDesc">과정을 성공적으로 완료했습니다.</p>
+    <button id="modalRestart">처음부터 다시</button>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -398,65 +562,73 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     return e;
   }
 
-  function rod(cx, cy, len, color, rotDeg){
-    var r = el("rect", {
+  function rod(len, color, rotDeg){
+    return el("rect", {
       x: -len/2, y: -4.5, width: len, height: 9, rx: 4.5,
       fill: color,
-      transform: "translate(" + cx + " " + cy + ") rotate(" + rotDeg + ")"
+      transform: "rotate(" + rotDeg + ")"
     });
-    return r;
   }
-
-  function dot(cx, cy){
-    return el("circle", { cx: cx, cy: cy, r: 3.2, fill: "var(--ink)", opacity: 0.5 });
+  function dot(){
+    return el("circle", { cx: 0, cy: 0, r: 3.2, fill: "var(--ink)", opacity: 0.5 });
   }
-
-  // chromosome: pair 'A' or 'B', duplicated true => X shape, rot in degrees (0=horizontal,90=vertical)
-  function chromosome(g, cx, cy, colorKey, pair, duplicated, rot){
-    rot = rot === undefined ? 90 : rot;
-    var len = LEN[pair];
-    var color = COLOR[colorKey];
-    if (duplicated){
-      g.appendChild(rod(cx, cy, len, color, rot - 21));
-      g.appendChild(rod(cx, cy, len, color, rot + 21));
-    } else {
-      g.appendChild(rod(cx, cy, len, color, rot));
-    }
-    g.appendChild(dot(cx, cy));
-  }
-
-  // wavy chromatin thread for interphase
-  function thread(g, cx, cy, colorKey, seed){
-    var d = "M " + (cx - 34) + " " + cy;
+  function threadPath(colorKey, seed){
+    var d = "M -34 0";
     for (var i = -3; i <= 3; i++){
-      var x = cx + i * 11;
-      var y = cy + Math.sin(i + seed) * 13;
-      d += " L " + x + " " + y;
+      d += " L " + (i*11) + " " + (Math.sin(i+seed)*13);
     }
-    var p = el("path", {
+    return el("path", {
       d: d, fill: "none", stroke: COLOR[colorKey],
-      "stroke-width": 6, "stroke-linecap": "round", "stroke-linejoin": "round",
-      opacity: 0.85
+      "stroke-width": 6, "stroke-linecap":"round", "stroke-linejoin":"round", opacity:0.85
     });
-    g.appendChild(p);
+  }
+
+  function buildShapeChildren(piece){
+    var out = [];
+    if (piece.thread){
+      out.push(threadPath(piece.colorKey, piece.seed || 0));
+      if (piece.stage === "sistered"){
+        var t2 = threadPath(piece.colorKey, (piece.seed||0)+0.6);
+        t2.setAttribute("opacity", 0.5);
+        out.push(t2);
+      }
+      return out;
+    }
+    var len = LEN[piece.pairKey];
+    var color = COLOR[piece.colorKey];
+    var rot = piece.rot || 90;
+    if (piece.duplicated){
+      out.push(rod(len, color, rot - 21));
+      out.push(rod(len, color, rot + 21));
+    } else {
+      out.push(rod(len, color, rot));
+    }
+    out.push(dot());
+    return out;
   }
 
   function cellShape(g, c, opts){
     opts = opts || {};
-    g.appendChild(el("ellipse", {
-      cx: c.cx, cy: c.cy, rx: c.rx, ry: c.ry,
+    var outer = el("ellipse", {
+      cx: c.cx, cy: c.cy, rx: c.rx, ry: c.ry, class: "cellring",
       fill: "none", stroke: "var(--muted)", "stroke-width": 2, opacity: 0.55
-    }));
+    });
+    g.appendChild(outer);
+    var nucleus = null;
     if (opts.nucleus){
-      g.appendChild(el("ellipse", {
-        cx: c.cx, cy: c.cy, rx: c.rx * 0.62, ry: c.ry * 0.62,
+      nucleus = el("ellipse", {
+        cx: c.cx, cy: c.cy, rx: c.rx * 0.62, ry: c.ry * 0.62, class: "cellring",
         fill: "none", stroke: "var(--muted)", "stroke-width": 1.4,
         "stroke-dasharray": "3 4", opacity: 0.55
-      }));
+      });
+      g.appendChild(nucleus);
     }
+    return { outer: outer, nucleus: nucleus };
   }
 
   function spindle(g, c, axis){
+    var wrap = el("g", { class: "cellring" });
+    g.appendChild(wrap);
     var apex1, apex2;
     if (axis === "v"){
       apex1 = { x: c.cx, y: c.cy - c.ry - 34 };
@@ -469,25 +641,25 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       var ex = c.cx + (axis === "v" ? c.rx * f : 0);
       var ey = c.cy + (axis === "v" ? 0 : c.ry * f);
       [apex1, apex2].forEach(function(ap){
-        g.appendChild(el("line", {
+        wrap.appendChild(el("line", {
           x1: ap.x, y1: ap.y, x2: ex, y2: ey,
-          stroke: "var(--muted)", "stroke-width": 1, opacity: 0.32
+          stroke: "var(--muted)", "stroke-width": 1, opacity: 0.28
         }));
       });
     });
+    return wrap;
   }
 
-  function equator(g, c, axis){
+  function equatorLine(g, c, axis){
+    var attrs = { stroke: "var(--accent)", "stroke-width": 1.6, "stroke-dasharray": "5 5", opacity: 0.55, class:"cellring" };
     if (axis === "v"){
-      g.appendChild(el("line", {
-        x1: c.cx - c.rx * 0.8, y1: c.cy, x2: c.cx + c.rx * 0.8, y2: c.cy,
-        stroke: "var(--accent)", "stroke-width": 1.4, "stroke-dasharray": "5 5", opacity: 0.6
-      }));
+      g.appendChild(el("line", Object.assign({
+        x1: c.cx - c.rx * 0.8, y1: c.cy, x2: c.cx + c.rx * 0.8, y2: c.cy
+      }, attrs)));
     } else {
-      g.appendChild(el("line", {
-        x1: c.cx, y1: c.cy - c.ry * 0.8, x2: c.cx, y2: c.cy + c.ry * 0.8,
-        stroke: "var(--accent)", "stroke-width": 1.4, "stroke-dasharray": "5 5", opacity: 0.6
-      }));
+      g.appendChild(el("line", Object.assign({
+        x1: c.cx, y1: c.cy - c.ry * 0.8, x2: c.cx, y2: c.cy + c.ry * 0.8
+      }, attrs)));
     }
   }
 
@@ -500,216 +672,275 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   var BL = { cx: 165, cy: 330, rx: 128, ry: 82 };
   var BR = { cx: 475, cy: 330, rx: 128, ry: 82 };
 
-  function pt(c, dx, dy){ return { x: c.cx + dx, y: c.cy + dy }; }
+  var SLOTS_V = [-90,-30,30,90];
+  var SLOTS_H = [-70,-24,24,70];
+  var POLE_V  = [-60,-20,20,60];
+  var POLE_H  = [-32,-10,10,32];
+
+  function mkPiece(id, pairKey, colorKey, cell, x, y, opts){
+    opts = opts || {};
+    return {
+      id: id, pairKey: pairKey, colorKey: colorKey, cell: cell,
+      x: x, y: y, rot: opts.rot || 90,
+      duplicated: !!opts.duplicated, thread: !!opts.thread, seed: opts.seed || 0,
+      draggable: opts.draggable !== false, locked: !!opts.locked,
+      bundleId: opts.bundleId || null,
+      stage: opts.stage || null,
+      condensedTarget: opts.condensedTarget || null
+    };
+  }
+
+  var SCATTER4 = [
+    { dx: -92, dy: -72, rot: 68 },
+    { dx: 82,  dy: -80, rot: 115 },
+    { dx: -86, dy: 58,  rot: 100 },
+    { dx: 88,  dy: 66,  rot: 75 }
+  ];
+  var SCATTER4B = [
+    { dx: -88, dy: -78, rot: 60 }, { dx: -66, dy: -60, rot: 105 },
+    { dx: 82,  dy: 62,  rot: 95 }, { dx: 60,  dy: 80,  rot: 60 }
+  ];
+
+  function replicateCondensePieces(prefix, scat){
+    var defs = [["Apat","A"],["Amat","A"],["Bpat","B"],["Bmat","B"]];
+    return defs.map(function(d,i){
+      var s = scat[i];
+      return mkPiece(prefix+"-"+i, d[1], d[0], "single",
+        SINGLE.cx + (i%2===0? -78:74), SINGLE.cy + (i<2? -50:56),
+        { thread:true, seed:i*0.9, draggable:false, stage:"thread",
+          condensedTarget: { x: SINGLE.cx+s.dx, y: SINGLE.cy+s.dy, rot: s.rot } });
+    });
+  }
 
   // =====================================================================
-  // MITOSIS STEPS
+  // STEP DEFINITIONS
   // =====================================================================
-  var mitosis = [
-    { badge: "간기 (interphase)", title: "간기 — 준비 단계",
-      desc: "DNA가 복제되어 유전 정보가 2배로 늘어나지만, 염색체는 아직 가늘고 긴 실(염색사) 형태로 풀어져 있어 하나하나 구분해 관찰할 수 없다.",
-      draw: function(g){
-        cellShape(g, SINGLE, { nucleus: true });
-        var p = pt(SINGLE, -78, -46); thread(g, p.x, p.y, "Apat", 0.2);
-        p = pt(SINGLE, 74, -58); thread(g, p.x, p.y, "Amat", 1.1);
-        p = pt(SINGLE, -66, 52); thread(g, p.x, p.y, "Bpat", 2.0);
-        p = pt(SINGLE, 70, 60); thread(g, p.x, p.y, "Bmat", 2.8);
-      }
-    },
-    { badge: "전기 (prophase)", title: "전기 — 염색체 등장",
-      desc: "염색사가 굵고 짧게 응축되어 막대 모양의 염색체로 보이기 시작한다. 염색체 하나하나는 2개의 염색분체가 붙어 있는 X자 모양이다. 핵막이 사라지고 방추사가 나타난다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        var p;
-        p = pt(SINGLE, -92, -72); chromosome(g, p.x, p.y, "Apat", "A", true, 68);
-        p = pt(SINGLE, 82, -80);  chromosome(g, p.x, p.y, "Amat", "A", true, 115);
-        p = pt(SINGLE, -86, 58);  chromosome(g, p.x, p.y, "Bpat", "B", true, 100);
-        p = pt(SINGLE, 88, 66);   chromosome(g, p.x, p.y, "Bmat", "B", true, 75);
-      }
-    },
-    { badge: "중기 (metaphase)", title: "중기 — 적도판 정렬",
-      desc: "염색체가 세포 중앙(적도판)에 한 줄로 배열된다. 염색체의 모양이 가장 뚜렷해 관찰하기 좋은 시기이다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        equator(g, SINGLE, "v");
-        chromosome(g, SINGLE.cx, SINGLE.cy - 88, "Apat", "A", true, 0);
-        chromosome(g, SINGLE.cx, SINGLE.cy - 30, "Amat", "A", true, 0);
-        chromosome(g, SINGLE.cx, SINGLE.cy + 30, "Bpat", "B", true, 0);
-        chromosome(g, SINGLE.cx, SINGLE.cy + 88, "Bmat", "B", true, 0);
-      }
-    },
-    { badge: "후기 (anaphase)", title: "후기 — 염색분체 분리",
-      desc: "방추사가 짧아지면서 염색체를 이루던 염색분체가 둘로 나뉘어 서로 다른 극으로 이동한다. 분리된 각 가닥은 이제 염색분체 1개짜리 홑염색체이며, 양쪽 극에 완전히 같은 세트가 모인다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        [-60,-20,20,60].forEach(function(dx, i){
-          var keys = ["Apat","Amat","Bpat","Bmat"];
-          var pairs = ["A","A","B","B"];
-          var pTop = pt(SINGLE, dx, -104);
-          var pBot = pt(SINGLE, dx, 104);
-          chromosome(g, pTop.x, pTop.y, keys[i], pairs[i], false, 90);
-          chromosome(g, pBot.x, pBot.y, keys[i], pairs[i], false, 90);
-        });
-      }
-    },
-    { badge: "말기 · 세포질분열", title: "말기와 세포질분열 — 딸세포 완성",
-      desc: "양 극에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
-      draw: function(g){
-        cellShape(g, TOP2, { nucleus: true });
-        cellShape(g, BOT2, { nucleus: true });
-        [TOP2, BOT2].forEach(function(c){
-          var offs = [[-58,-14],[-18,14],[20,-12],[58,12]];
-          var keys = ["Apat","Amat","Bpat","Bmat"];
-          var pairs = ["A","A","B","B"];
-          offs.forEach(function(o,i){
-            var p = pt(c, o[0], o[1]);
-            chromosome(g, p.x, p.y, keys[i], pairs[i], false, 70 + i*15);
+  function buildMitosisSteps(){
+    return [
+      {
+        key: "interphase-prophase", badge: "간기 → 전기", title: "간기·전기 — 복제와 응축",
+        desc: "간기 동안 DNA가 복제되어 유전 정보가 2배가 된다. 전기에는 염색사가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
+        task: "replicate", required: 4,
+        instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
+        initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
+        cells: [{ rect: SINGLE, axis: "v", nucleus: false }]
+      },
+      {
+        key: "metaphase", badge: "중기", title: "중기 — 적도판 정렬",
+        desc: "염색체가 세포 중앙(적도판)에 한 줄로 배열된다. 염색체의 모양이 가장 뚜렷해 관찰하기 좋은 시기이다.",
+        task: "drag-equator", required: 4,
+        instruction: "염색체를 드래그해서 세포 중앙의 점선(적도판) 위로 옮기세요.",
+        initPieces: function(){
+          var defs = [["Apat","A"],["Amat","A"],["Bpat","B"],["Bmat","B"]];
+          return defs.map(function(d,i){
+            var s = SCATTER4[i];
+            return mkPiece("m2-"+i, d[1], d[0], "single", SINGLE.cx+s.dx, SINGLE.cy+s.dy, { duplicated:true, rot:s.rot });
           });
-        });
+        },
+        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle: true, equator: true }]
+      },
+      {
+        key: "anaphase", badge: "후기", title: "후기 — 염색분체 분리",
+        desc: "방추사가 짧아지면서 염색분체가 분리되어 서로 다른 극으로 이동한다. 분리된 가닥은 염색분체 1개짜리 홑염색체가 되며, 양쪽 극에 완전히 같은 세트가 모인다.",
+        task: "action", actionLabel: "염색분체 분리", separateMode:"chromatid", required: 1,
+        instruction: "아래 「염색분체 분리」 버튼을 눌러 염색분체를 양 극으로 분리하세요.",
+        initPieces: function(){
+          var defs = [["Apat","A",-90],["Amat","A",-30],["Bpat","B",30],["Bmat","B",90]];
+          return defs.map(function(d,i){
+            return mkPiece("m3-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy, { duplicated:true, rot:0 });
+          });
+        },
+        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle: true }]
+      },
+      {
+        key: "telophase", badge: "말기 · 세포질분열", title: "말기와 세포질분열 — 딸세포 완성",
+        desc: "양 극에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
+        task: "action", actionLabel: "세포질 분열", required: 1, isFinal: true,
+        instruction: "아래 「세포질 분열」 버튼을 눌러 딸세포 2개를 완성하세요.",
+        onAction: function(){ cytokinesisSplit("single", [
+          { key:"top", rect: TOP2, nucleus:true }, { key:"bot", rect: BOT2, nucleus:true }
+        ], function(piece){ return piece.y < SINGLE.cy ? "top" : "bot"; }, [[-58,-14,70],[-18,14,85],[20,-12,100],[58,12,115]]); },
+        initPieces: function(){
+          var defs = [["Apat","A",-60,-104],["Amat","A",-20,-104],["Bpat","B",20,-104],["Bmat","B",60,-104]];
+          var out = [];
+          defs.forEach(function(d,i){
+            out.push(mkPiece("m4a-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy+d[3], { rot:90, draggable:false, locked:true }));
+            out.push(mkPiece("m4b-"+i, d[1], d[0], "single", SINGLE.cx+d[2], SINGLE.cy-d[3], { rot:90, draggable:false, locked:true }));
+          });
+          return out;
+        },
+        cells: [{ rect: SINGLE, axis: "v", nucleus: false, spindle:true }]
       }
-    }
-  ];
+    ];
+  }
+
+  function buildMeiosisSteps(){
+    return [
+      {
+        key: "interphase-prophase1", badge: "간기 → 전기Ⅰ", title: "간기·전기Ⅰ — 복제와 응축",
+        desc: "체세포분열과 마찬가지로 DNA가 복제되어 유전 정보가 2배가 되고, 이어서 염색체가 응축되어 나타난다.",
+        task: "replicate", required: 4,
+        instruction: "각 염색사를 마우스 오른쪽 버튼으로 클릭 → 복제하기 → 다시 오른쪽 클릭 → 응축하기 순서로 진행하세요.",
+        initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
+        cells: [{ rect: SINGLE, axis:"v", nucleus:false }]
+      },
+      {
+        key: "prophase1-synapsis", badge: "전기Ⅰ (접합)", title: "전기Ⅰ — 상동염색체의 접합",
+        desc: "크기와 모양이 같은 상동염색체끼리 서로 짝을 지어 접합한다. 이렇게 만들어진 4가닥짜리 묶음을 2가염색체(사분체)라고 한다.",
+        callout: "2가염색체(사분체) 형성은 감수분열에서만 일어나는 단계! 체세포분열에는 없다.",
+        task: "pair-homologs", required: 2,
+        instruction: "같은 쌍(같은 크기)의 염색체 두 개를 서로 가까이 드래그하여 짝지어 보세요.",
+        initPieces: function(){
+          return [
+            mkPiece("e2-Apat","A","Apat","single", SINGLE.cx-95, SINGLE.cy-85, {duplicated:true, rot:60}),
+            mkPiece("e2-Amat","A","Amat","single", SINGLE.cx+70, SINGLE.cy-95, {duplicated:true, rot:110}),
+            mkPiece("e2-Bpat","B","Bpat","single", SINGLE.cx-75, SINGLE.cy+90, {duplicated:true, rot:100}),
+            mkPiece("e2-Bmat","B","Bmat","single", SINGLE.cx+90, SINGLE.cy+70, {duplicated:true, rot:65})
+          ];
+        },
+        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+      },
+      {
+        key: "metaphase1", badge: "중기Ⅰ", title: "중기Ⅰ — 2가염색체의 정렬",
+        desc: "2가염색체(상동염색체 한 쌍이 접합된 상태) 그대로 적도판에 배열된다. 체세포분열의 중기와 달리, 염색체 한 개씩이 아니라 쌍 단위로 늘어선다.",
+        task: "drag-equator", required: 2, bundleAsUnit: true,
+        instruction: "2가염색체 묶음(쌍)을 드래그하여 적도판 위로 옮기세요. 한 쌍씩 함께 움직입니다.",
+        initPieces: function(){
+          return [
+            mkPiece("e3-Apat","A","Apat","single", SINGLE.cx-96, SINGLE.cy-60, {duplicated:true, rot:0, bundleId:"A"}),
+            mkPiece("e3-Amat","A","Amat","single", SINGLE.cx-80, SINGLE.cy-60, {duplicated:true, rot:0, bundleId:"A"}),
+            mkPiece("e3-Bpat","B","Bpat","single", SINGLE.cx+80, SINGLE.cy+60, {duplicated:true, rot:0, bundleId:"B"}),
+            mkPiece("e3-Bmat","B","Bmat","single", SINGLE.cx+96, SINGLE.cy+60, {duplicated:true, rot:0, bundleId:"B"})
+          ];
+        },
+        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true, equator:true }]
+      },
+      {
+        key: "anaphase1", badge: "후기Ⅰ", title: "후기Ⅰ — 상동염색체 분리",
+        desc: "염색분체가 아니라 상동염색체 전체(2가염색체를 이루던 두 염색체)가 통째로 분리되어 서로 다른 극으로 이동한다. 이 때문에 염색체 수가 절반으로 줄어든다.",
+        callout: "체세포분열의 후기는 염색분체가 분리되지만, 감수분열의 후기Ⅰ은 상동염색체 자체가 분리된다.",
+        task: "action", actionLabel:"상동염색체 분리", separateMode:"homolog", required: 1,
+        instruction: "아래 「상동염색체 분리」 버튼을 눌러 상동염색체를 양 극으로 분리하세요.",
+        initPieces: function(){
+          return [
+            mkPiece("e4-Apat","A","Apat","single", SINGLE.cx-10, SINGLE.cy-6, {duplicated:true, rot:0, bundleId:"A"}),
+            mkPiece("e4-Amat","A","Amat","single", SINGLE.cx+10, SINGLE.cy-6, {duplicated:true, rot:0, bundleId:"A"}),
+            mkPiece("e4-Bpat","B","Bpat","single", SINGLE.cx-10, SINGLE.cy+6, {duplicated:true, rot:0, bundleId:"B"}),
+            mkPiece("e4-Bmat","B","Bmat","single", SINGLE.cx+10, SINGLE.cy+6, {duplicated:true, rot:0, bundleId:"B"})
+          ];
+        },
+        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+      },
+      {
+        key: "telophase1", badge: "말기Ⅰ · 세포질분열", title: "말기Ⅰ과 세포질분열 — 염색체 수 반감",
+        desc: "세포질이 갈라져 2개의 세포가 만들어진다. 각 세포의 염색체 수는 모세포의 절반(n=2)이다. 단, 각 염색체는 여전히 2개의 염색분체로 이루어져 있다.",
+        task: "action", actionLabel:"세포질 분열", required: 1,
+        instruction: "아래 「세포질 분열」 버튼을 눌러 세포 2개로 나누세요.",
+        onAction: function(){ cytokinesisSplit("single", [
+          { key:"top", rect: TOP2, nucleus:false }, { key:"bot", rect: BOT2, nucleus:false }
+        ], function(piece){ return piece.y < SINGLE.cy ? "top" : "bot"; }, [[-46,0,100],[46,0,80]]); },
+        initPieces: function(){
+          return [
+            mkPiece("e5-top-A","A","Apat","single", SINGLE.cx-34, SINGLE.cy-100, {duplicated:true, rot:90}),
+            mkPiece("e5-top-B","B","Bmat","single", SINGLE.cx+34, SINGLE.cy-100, {duplicated:true, rot:90}),
+            mkPiece("e5-bot-A","A","Amat","single", SINGLE.cx-34, SINGLE.cy+100, {duplicated:true, rot:90}),
+            mkPiece("e5-bot-B","B","Bpat","single", SINGLE.cx+34, SINGLE.cy+100, {duplicated:true, rot:90})
+          ];
+        },
+        cells: [{ rect: SINGLE, axis:"v", nucleus:false, spindle:true }]
+      },
+      {
+        key: "metaphase2", badge: "전기Ⅱ → 중기Ⅱ", title: "전기Ⅱ~중기Ⅱ — 각자의 적도판 정렬",
+        desc: "감수 1분열 뒤 간기 없이 곧바로 감수 2분열이 시작된다. 각 세포 안에서 염색체가 자기 세포의 적도판에 배열된다.",
+        task: "drag-equator", required: 4,
+        instruction: "각 세포 안에서 염색체 두 개를 그 세포의 점선(적도판) 위로 각각 드래그하세요.",
+        initPieces: function(){
+          return [
+            mkPiece("e6-top-A","A","Apat","top", TOP2.cx-50, TOP2.cy-14, {duplicated:true, rot:25}),
+            mkPiece("e6-top-B","B","Bmat","top", TOP2.cx+48, TOP2.cy+16, {duplicated:true, rot:-15}),
+            mkPiece("e6-bot-A","A","Amat","bot", BOT2.cx-50, BOT2.cy+16, {duplicated:true, rot:-20}),
+            mkPiece("e6-bot-B","B","Bpat","bot", BOT2.cx+48, BOT2.cy-14, {duplicated:true, rot:20})
+          ];
+        },
+        cells: [
+          { rect: TOP2, axis:"h", nucleus:false, spindle:true, equator:true, key:"top" },
+          { rect: BOT2, axis:"h", nucleus:false, spindle:true, equator:true, key:"bot" }
+        ]
+      },
+      {
+        key: "anaphase2", badge: "후기Ⅱ", title: "후기Ⅱ — 염색분체 분리",
+        desc: "체세포분열의 후기처럼 염색분체가 분리되어 각 세포 안에서 서로 다른 극으로 이동한다.",
+        task: "action", actionLabel:"염색분체 분리", separateMode:"chromatid", required: 1,
+        instruction: "아래 「염색분체 분리」 버튼을 눌러 각 세포 안의 염색분체를 분리하세요.",
+        initPieces: function(){
+          return [
+            mkPiece("e7-top-A","A","Apat","top", TOP2.cx, TOP2.cy-18, {duplicated:true, rot:90}),
+            mkPiece("e7-top-B","B","Bmat","top", TOP2.cx, TOP2.cy+20, {duplicated:true, rot:90}),
+            mkPiece("e7-bot-A","A","Amat","bot", BOT2.cx, BOT2.cy-18, {duplicated:true, rot:90}),
+            mkPiece("e7-bot-B","B","Bpat","bot", BOT2.cx, BOT2.cy+20, {duplicated:true, rot:90})
+          ];
+        },
+        cells: [
+          { rect: TOP2, axis:"h", nucleus:false, spindle:true, key:"top" },
+          { rect: BOT2, axis:"h", nucleus:false, spindle:true, key:"bot" }
+        ]
+      },
+      {
+        key: "telophase2", badge: "말기Ⅱ · 세포질분열", title: "말기Ⅱ와 세포질분열 — 생식세포 4개 완성",
+        desc: "세포질분열이 한 번 더 일어나 총 4개의 딸세포(생식세포)가 만들어진다. 각 생식세포의 염색체 수는 n=2로 모세포의 절반이며, 상동염색체가 무작위로 나뉘어 들어갔기 때문에 4개의 세포는 유전적으로 서로 다를 수 있다.",
+        callout: "체세포분열은 딸세포 2개(2n) · 생식세포분열은 딸세포 4개(n) — 염색체 수와 개수가 모두 다르게 끝난다.",
+        task: "action", actionLabel:"세포질 분열", required: 1, isFinal: true,
+        instruction: "아래 「세포질 분열」 버튼을 눌러 생식세포 4개를 완성하세요.",
+        onAction: function(){
+          cytokinesisSplit("top", [
+            { key:"tl", rect: TL, nucleus:true }, { key:"tr", rect: TR, nucleus:true }
+          ], function(piece){ return piece.x < TOP2.cx ? "tl" : "tr"; }, [[-22,0,70],[22,0,110]]);
+          cytokinesisSplit("bot", [
+            { key:"bl", rect: BL, nucleus:true }, { key:"br", rect: BR, nucleus:true }
+          ], function(piece){ return piece.x < BOT2.cx ? "bl" : "br"; }, [[-22,0,70],[22,0,110]]);
+        },
+        initPieces: function(){
+          return [
+            mkPiece("e8-top-Al","A","Apat","top", TOP2.cx-78, TOP2.cy-18, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-top-Ar","A","Apat","top", TOP2.cx+78, TOP2.cy-18, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-top-Bl","B","Bmat","top", TOP2.cx-78, TOP2.cy+20, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-top-Br","B","Bmat","top", TOP2.cx+78, TOP2.cy+20, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-bot-Al","A","Amat","bot", BOT2.cx-78, BOT2.cy-18, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-bot-Ar","A","Amat","bot", BOT2.cx+78, BOT2.cy-18, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-bot-Bl","B","Bpat","bot", BOT2.cx-78, BOT2.cy+20, { rot:0, draggable:false, locked:true }),
+            mkPiece("e8-bot-Br","B","Bpat","bot", BOT2.cx+78, BOT2.cy+20, { rot:0, draggable:false, locked:true })
+          ];
+        },
+        cells: [
+          { rect: TOP2, axis:"h", nucleus:false, spindle:true, key:"top" },
+          { rect: BOT2, axis:"h", nucleus:false, spindle:true, key:"bot" }
+        ]
+      }
+    ];
+  }
 
   // =====================================================================
-  // MEIOSIS STEPS
+  // ENGINE STATE
   // =====================================================================
-  var meiosis = [
-    { badge: "간기 (interphase)", title: "간기 — 준비 단계",
-      desc: "체세포분열과 마찬가지로 DNA가 복제되어 유전 정보가 2배가 된다. 염색체는 아직 실 모양으로 풀어져 있다.",
-      draw: function(g){
-        cellShape(g, SINGLE, { nucleus: true });
-        var p = pt(SINGLE, -78, -46); thread(g, p.x, p.y, "Apat", 0.2);
-        p = pt(SINGLE, 74, -58); thread(g, p.x, p.y, "Amat", 1.1);
-        p = pt(SINGLE, -66, 52); thread(g, p.x, p.y, "Bpat", 2.0);
-        p = pt(SINGLE, 70, 60); thread(g, p.x, p.y, "Bmat", 2.8);
-      }
-    },
-    { badge: "전기Ⅰ", title: "전기Ⅰ — 상동염색체의 접합",
-      desc: "염색체가 응축되어 나타나는 것은 체세포분열과 같지만, 여기서는 크기와 모양이 같은 상동염색체끼리 서로 짝을 지어 접합한다. 이렇게 만들어진 4가닥짜리 묶음을 2가염색체(사분체)라고 한다.",
-      callout: "2가염색체(사분체) 형성은 감수분열에서만 일어나는 단계! 체세포분열의 전기에는 없다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        chromosome(g, SINGLE.cx - 88, SINGLE.cy - 78, "Apat", "A", true, 60);
-        chromosome(g, SINGLE.cx - 66, SINGLE.cy - 60, "Amat", "A", true, 105);
-        chromosome(g, SINGLE.cx + 82, SINGLE.cy + 62, "Bpat", "B", true, 95);
-        chromosome(g, SINGLE.cx + 60, SINGLE.cy + 80, "Bmat", "B", true, 60);
-      }
-    },
-    { badge: "중기Ⅰ", title: "중기Ⅰ — 2가염색체의 정렬",
-      desc: "2가염색체(상동염색체 한 쌍이 접합된 상태) 그대로 적도판에 배열된다. 체세포분열의 중기와 달리, 염색체가 한 개씩이 아니라 상동염색체 쌍 단위로 늘어선다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        equator(g, SINGLE, "v");
-        chromosome(g, SINGLE.cx - 10, SINGLE.cy - 58, "Apat", "A", true, 0);
-        chromosome(g, SINGLE.cx + 10, SINGLE.cy - 34, "Amat", "A", true, 0);
-        chromosome(g, SINGLE.cx - 10, SINGLE.cy + 34, "Bpat", "B", true, 0);
-        chromosome(g, SINGLE.cx + 10, SINGLE.cy + 58, "Bmat", "B", true, 0);
-      }
-    },
-    { badge: "후기Ⅰ", title: "후기Ⅰ — 상동염색체 분리",
-      desc: "염색분체가 아니라 상동염색체 전체(2가염색체를 이루던 두 염색체)가 통째로 분리되어 서로 다른 극으로 이동한다. 이때문에 염색체 수가 절반으로 줄어든다 — 감수분열만의 핵심 특징이다.",
-      callout: "체세포분열의 후기는 염색분체가 분리되지만, 감수분열의 후기Ⅰ은 상동염색체 자체가 분리된다.",
-      draw: function(g){
-        cellShape(g, SINGLE, {});
-        spindle(g, SINGLE, "v");
-        var pTop1 = pt(SINGLE, -34, -100); chromosome(g, pTop1.x, pTop1.y, "Apat", "A", true, 90);
-        var pTop2 = pt(SINGLE, 34, -100);  chromosome(g, pTop2.x, pTop2.y, "Bmat", "B", true, 90);
-        var pBot1 = pt(SINGLE, -34, 100);  chromosome(g, pBot1.x, pBot1.y, "Amat", "A", true, 90);
-        var pBot2 = pt(SINGLE, 34, 100);   chromosome(g, pBot2.x, pBot2.y, "Bpat", "B", true, 90);
-      }
-    },
-    { badge: "말기Ⅰ · 세포질분열", title: "말기Ⅰ과 세포질분열 — 염색체 수 반감",
-      desc: "세포질이 갈라져 2개의 세포가 만들어진다. 각 세포의 염색체 수는 모세포의 절반(n=2)이다. 단, 각 염색체는 여전히 2개의 염색분체로 이루어져 있다 — 아직 감수 2분열이 남아 있다.",
-      draw: function(g){
-        cellShape(g, TOP2, {});
-        cellShape(g, BOT2, {});
-        var t1 = pt(TOP2, -46, 0); chromosome(g, t1.x, t1.y, "Apat", "A", true, 100);
-        var t2 = pt(TOP2, 46, 0);  chromosome(g, t2.x, t2.y, "Bmat", "B", true, 80);
-        var b1 = pt(BOT2, -46, 0); chromosome(g, b1.x, b1.y, "Amat", "A", true, 100);
-        var b2 = pt(BOT2, 46, 0);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 80);
-      }
-    },
-    { badge: "전기Ⅱ", title: "전기Ⅱ — 두 세포에서 동시에",
-      desc: "감수 1분열 뒤 간기(DNA 복제) 없이 곧바로 감수 2분열이 시작된다. 두 세포에서 각각 방추사가 다시 나타난다.",
-      draw: function(g){
-        cellShape(g, TOP2, {});
-        cellShape(g, BOT2, {});
-        spindle(g, TOP2, "h");
-        spindle(g, BOT2, "h");
-        var t1 = pt(TOP2, -50, -14); chromosome(g, t1.x, t1.y, "Apat", "A", true, 25);
-        var t2 = pt(TOP2, 48, 16);   chromosome(g, t2.x, t2.y, "Bmat", "B", true, -15);
-        var b1 = pt(BOT2, -50, 16);  chromosome(g, b1.x, b1.y, "Amat", "A", true, -20);
-        var b2 = pt(BOT2, 48, -14);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 20);
-      }
-    },
-    { badge: "중기Ⅱ", title: "중기Ⅱ — 각자의 적도판 정렬",
-      desc: "각 세포 안에서 염색체가 자기 세포의 적도판에 한 줄로 배열된다. 체세포분열의 중기와 같은 원리이지만, 염색체 수가 절반(n)이라는 점이 다르다.",
-      draw: function(g){
-        cellShape(g, TOP2, {});
-        cellShape(g, BOT2, {});
-        spindle(g, TOP2, "h");
-        spindle(g, BOT2, "h");
-        equator(g, TOP2, "h");
-        equator(g, BOT2, "h");
-        var t1 = pt(TOP2, 0, -18); chromosome(g, t1.x, t1.y, "Apat", "A", true, 90);
-        var t2 = pt(TOP2, 0, 20);  chromosome(g, t2.x, t2.y, "Bmat", "B", true, 90);
-        var b1 = pt(BOT2, 0, -18); chromosome(g, b1.x, b1.y, "Amat", "A", true, 90);
-        var b2 = pt(BOT2, 0, 20);  chromosome(g, b2.x, b2.y, "Bpat", "B", true, 90);
-      }
-    },
-    { badge: "후기Ⅱ", title: "후기Ⅱ — 염색분체 분리",
-      desc: "이번에는 체세포분열의 후기처럼 염색분체가 분리되어 각 세포 안에서 좌우로 이동한다.",
-      draw: function(g){
-        cellShape(g, TOP2, {});
-        cellShape(g, BOT2, {});
-        spindle(g, TOP2, "h");
-        spindle(g, BOT2, "h");
-        var tl1 = pt(TOP2, -78, -18); chromosome(g, tl1.x, tl1.y, "Apat", "A", false, 0);
-        var tr1 = pt(TOP2, 78, -18);  chromosome(g, tr1.x, tr1.y, "Apat", "A", false, 0);
-        var tl2 = pt(TOP2, -78, 20);  chromosome(g, tl2.x, tl2.y, "Bmat", "B", false, 0);
-        var tr2 = pt(TOP2, 78, 20);   chromosome(g, tr2.x, tr2.y, "Bmat", "B", false, 0);
-        var bl1 = pt(BOT2, -78, -18); chromosome(g, bl1.x, bl1.y, "Amat", "A", false, 0);
-        var br1 = pt(BOT2, 78, -18);  chromosome(g, br1.x, br1.y, "Amat", "A", false, 0);
-        var bl2 = pt(BOT2, -78, 20);  chromosome(g, bl2.x, bl2.y, "Bpat", "B", false, 0);
-        var br2 = pt(BOT2, 78, 20);   chromosome(g, br2.x, br2.y, "Bpat", "B", false, 0);
-      }
-    },
-    { badge: "말기Ⅱ · 세포질분열", title: "말기Ⅱ와 세포질분열 — 생식세포 4개 완성",
-      desc: "세포질분열이 한 번 더 일어나 총 4개의 딸세포(생식세포)가 만들어진다. 각 생식세포의 염색체 수는 n=2로 모세포의 절반이며, 상동염색체가 무작위로 나뉘어 들어갔기 때문에 4개의 세포는 유전적으로 서로 다를 수 있다.",
-      callout: "체세포분열은 딸세포 2개(2n) · 생식세포분열은 딸세포 4개(n) — 염색체 수와 개수가 모두 다르게 끝난다.",
-      draw: function(g){
-        cellShape(g, TL, { nucleus: true });
-        cellShape(g, TR, { nucleus: true });
-        cellShape(g, BL, { nucleus: true });
-        cellShape(g, BR, { nucleus: true });
-        [TL, TR].forEach(function(c){
-          var p1 = pt(c, -22, 0); chromosome(g, p1.x, p1.y, "Apat", "A", false, 70);
-          var p2 = pt(c, 22, 0);  chromosome(g, p2.x, p2.y, "Bmat", "B", false, 110);
-        });
-        [BL, BR].forEach(function(c){
-          var p1 = pt(c, -22, 0); chromosome(g, p1.x, p1.y, "Amat", "A", false, 70);
-          var p2 = pt(c, 22, 0);  chromosome(g, p2.x, p2.y, "Bpat", "B", false, 110);
-        });
-      }
-    }
-  ];
-
-  // =====================================================================
-  // UI wiring
-  // =====================================================================
-  var state = { mode: "mitosis", step: 0, playing: false, timer: null };
+  var state = {
+    mode: "mitosis",
+    stepIdx: 0,
+    steps: buildMitosisSteps(),
+    pieces: [],
+    solvedCount: 0,
+    cellSlotCounter: {},
+    els: {},
+    cellEls: {}
+  };
 
   var btnMitosis = document.getElementById("btn-mitosis");
   var btnMeiosis = document.getElementById("btn-meiosis");
   var timelineEl = document.getElementById("timeline");
   var prevBtn = document.getElementById("prev");
   var nextBtn = document.getElementById("next");
-  var playBtn = document.getElementById("play");
+  var resetBtn = document.getElementById("reset");
+  var solveBtn = document.getElementById("solve");
+  var actionBtn = document.getElementById("stageAction");
   var stepCount = document.getElementById("step-count");
   var stepBadge = document.getElementById("step-badge");
   var stepTitle = document.getElementById("step-title");
@@ -717,110 +948,556 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   var calloutEl = document.getElementById("callout");
   var phaseGroup = document.getElementById("phase-group");
   var cellCount = document.getElementById("cell-count");
+  var instructionEl = document.getElementById("instruction");
+  var instructionText = document.getElementById("instruction-text");
+  var instructionProgress = document.getElementById("instruction-progress");
+  var ctxMenu = document.getElementById("ctxMenu");
+  var toastEl = document.getElementById("toast");
+  var modalOverlay = document.getElementById("modalOverlay");
+  var modalTitle = document.getElementById("modalTitle");
+  var modalDesc = document.getElementById("modalDesc");
+  var modalRestart = document.getElementById("modalRestart");
 
-  function steps(){ return state.mode === "mitosis" ? mitosis : meiosis; }
+  function currentStep(){ return state.steps[state.stepIdx]; }
+  function cellByKey(step, key){
+    for (var i=0;i<step.cells.length;i++){
+      if ((step.cells[i].key||"single") === key) return step.cells[i];
+    }
+    return step.cells[0];
+  }
+  function toSvgPoint(clientX, clientY){
+    var pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    var ctm = svg.getScreenCTM();
+    return pt.matrixTransform(ctm.inverse());
+  }
+  function slotIndex(key){
+    if (state.cellSlotCounter[key] === undefined) state.cellSlotCounter[key] = 0;
+    var idx = state.cellSlotCounter[key];
+    state.cellSlotCounter[key] += 1;
+    return idx;
+  }
 
-  function render(){
-    var list = steps();
-    var s = list[state.step];
+  var toastTimer = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("visible");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("visible"); }, 2400);
+  }
 
+  // ---------------- rendering ----------------
+  function rebuildStage(){
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    var g = el("g", { style: "transition: opacity .2s ease" });
-    svg.appendChild(g);
-    s.draw(g);
+    state.els = {};
+    state.cellEls = {};
+
+    var s = currentStep();
+    var back = el("g", {});
+    svg.appendChild(back);
+    s.cells.forEach(function(c){
+      var shapes = cellShape(back, c.rect, { nucleus: c.nucleus });
+      var spindleWrap = c.spindle ? spindle(back, c.rect, c.axis) : null;
+      if (c.equator) equatorLine(back, c.rect, c.axis);
+      state.cellEls[c.key || "single"] = { outer: shapes.outer, nucleus: shapes.nucleus, spindleWrap: spindleWrap };
+    });
+
+    var front = el("g", {});
+    svg.appendChild(front);
+
+    state.pieces.forEach(function(piece){
+      addPieceEl(piece, front);
+    });
+
+    updateInstruction();
+    updateControls();
+  }
+
+  function redrawPiece(piece){
+    var rec = state.els[piece.id];
+    if (!rec) return;
+    while (rec.g.firstChild) rec.g.removeChild(rec.g.firstChild);
+    buildShapeChildren(piece).forEach(function(ch){ rec.g.appendChild(ch); });
+    rec.g.setAttribute("transform", "translate(" + piece.x + " " + piece.y + ")");
+    rec.g.classList.toggle("locked", !!piece.locked);
+  }
+
+  function addPieceEl(piece, frontOverride){
+    var front = frontOverride || svg.lastChild;
+    var g = el("g", { class: "piece" + (piece.locked ? " locked" : ""),
+                       transform: "translate(" + piece.x + " " + piece.y + ")" });
+    buildShapeChildren(piece).forEach(function(ch){ g.appendChild(ch); });
+    front.appendChild(g);
+    state.els[piece.id] = { g: g, piece: piece };
+    attachHandlers(piece, g);
+  }
+
+  function removePieceEl(id){
+    var rec = state.els[id];
+    if (!rec) return;
+    rec.g.remove();
+    delete state.els[id];
+  }
+
+  // ---------------- drag & interaction ----------------
+  var drag = null;
+
+  function attachHandlers(piece, g){
+    g.addEventListener("pointerdown", function(e){ onPointerDown(e, piece, g); });
+    g.addEventListener("contextmenu", function(e){ e.preventDefault(); onRightClick(piece, e); });
+  }
+
+  function onPointerDown(e, piece, g){
+    var s = currentStep();
+    if (s.task !== "drag-equator" && s.task !== "pair-homologs") return;
+    if (!piece.draggable || piece.locked) return;
+    e.preventDefault();
+    try { g.setPointerCapture(e.pointerId); } catch(err){}
+    var p = toSvgPoint(e.clientX, e.clientY);
+    drag = { piece: piece, offx: p.x - piece.x, offy: p.y - piece.y, g: g };
+    g.classList.add("dragging");
+    g.addEventListener("pointermove", onPointerMove);
+    g.addEventListener("pointerup", onPointerUp);
+    g.addEventListener("pointercancel", onPointerUp);
+  }
+
+  function onPointerMove(e){
+    if (!drag) return;
+    var p = toSvgPoint(e.clientX, e.clientY);
+    var nx = p.x - drag.offx, ny = p.y - drag.offy;
+    var dx = nx - drag.piece.x, dy = ny - drag.piece.y;
+    drag.piece.x = nx; drag.piece.y = ny;
+    var rec = state.els[drag.piece.id];
+    rec.g.setAttribute("transform", "translate(" + nx + " " + ny + ")");
+    var s = currentStep();
+    if (s.bundleAsUnit && drag.piece.bundleId){
+      state.pieces.forEach(function(p2){
+        if (p2 !== drag.piece && p2.bundleId === drag.piece.bundleId){
+          p2.x += dx; p2.y += dy;
+          var rec2 = state.els[p2.id];
+          if (rec2) rec2.g.setAttribute("transform", "translate(" + p2.x + " " + p2.y + ")");
+        }
+      });
+    }
+  }
+
+  function onPointerUp(e){
+    if (!drag) return;
+    var piece = drag.piece, g = drag.g;
+    g.classList.remove("dragging");
+    g.removeEventListener("pointermove", onPointerMove);
+    g.removeEventListener("pointerup", onPointerUp);
+    g.removeEventListener("pointercancel", onPointerUp);
+    drag = null;
+    evaluateDrop(piece);
+  }
+
+  // ---------------- context menu (replicate / condense / uncondense) ----------------
+  var ctxPiece = null;
+  function onRightClick(piece, e){
+    var s = currentStep();
+    if (s.task !== "replicate") return;
+    ctxPiece = piece;
+    var canReplicate = piece.stage === "thread";
+    var canCondense = piece.stage === "sistered";
+    var canUncondense = piece.stage === "condensed";
+    ctxMenu.querySelector('[data-action="replicate"]').classList.toggle("disabled", !canReplicate);
+    ctxMenu.querySelector('[data-action="condense"]').classList.toggle("disabled", !canCondense);
+    ctxMenu.querySelector('[data-action="uncondense"]').classList.toggle("disabled", !canUncondense);
+    ctxMenu.style.left = e.clientX + "px";
+    ctxMenu.style.top = e.clientY + "px";
+    ctxMenu.classList.add("open");
+  }
+  function hideCtx(){ ctxMenu.classList.remove("open"); ctxPiece = null; }
+  document.addEventListener("pointerdown", function(e){
+    if (!ctxMenu.contains(e.target)) hideCtx();
+  });
+  ctxMenu.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  ctxMenu.querySelectorAll("li").forEach(function(li){
+    li.addEventListener("click", function(){
+      if (li.classList.contains("disabled") || !ctxPiece) return;
+      var action = li.getAttribute("data-action");
+      if (action === "replicate") ctxReplicate(ctxPiece);
+      else if (action === "condense") ctxCondense(ctxPiece);
+      else if (action === "uncondense") ctxUncondense(ctxPiece);
+      hideCtx();
+    });
+  });
+
+  function ctxReplicate(piece){
+    if (piece.stage !== "thread") return;
+    piece.stage = "sistered";
+    var sister = mkPiece(piece.id+"-sis", piece.pairKey, piece.colorKey, piece.cell, piece.x+16, piece.y+9,
+      { thread:true, seed:(piece.seed||0)+0.6, draggable:false, stage:"sistered", condensedTarget: piece.condensedTarget });
+    state.pieces.push(sister);
+    addPieceEl(sister);
+    redrawPiece(piece);
+    toast("DNA가 복제되었습니다.");
+  }
+  function ctxCondense(piece){
+    if (piece.stage !== "sistered") return;
+    var partner = state.pieces.filter(function(p){ return p!==piece && p.colorKey===piece.colorKey && p.stage==="sistered"; })[0];
+    if (!partner) return;
+    removePieceEl(piece.id); removePieceEl(partner.id);
+    state.pieces = state.pieces.filter(function(p){ return p!==piece && p!==partner; });
+    var ct = piece.condensedTarget;
+    var cp = mkPiece("cond-"+piece.colorKey, piece.pairKey, piece.colorKey, piece.cell, ct.x, ct.y,
+      { duplicated:true, rot:ct.rot, draggable:false, stage:"condensed", condensedTarget: ct });
+    state.pieces.push(cp);
+    addPieceEl(cp);
+    state.solvedCount += 1;
+    toast("염색분체가 응축되어 염색체가 되었습니다.");
+    checkStepDone();
+  }
+  function ctxUncondense(piece){
+    if (piece.stage !== "condensed") return;
+    removePieceEl(piece.id);
+    state.pieces = state.pieces.filter(function(p){ return p!==piece; });
+    var s1 = mkPiece(piece.id+"-u1", piece.pairKey, piece.colorKey, piece.cell, piece.x-16, piece.y,
+      { thread:true, draggable:false, stage:"sistered", condensedTarget: piece.condensedTarget });
+    var s2 = mkPiece(piece.id+"-u2", piece.pairKey, piece.colorKey, piece.cell, piece.x+16, piece.y,
+      { thread:true, draggable:false, stage:"sistered", condensedTarget: piece.condensedTarget });
+    state.pieces.push(s1, s2);
+    addPieceEl(s1); addPieceEl(s2);
+    state.solvedCount = Math.max(0, state.solvedCount - 1);
+    toast("염색체의 응축이 풀렸습니다.");
+    checkStepDone();
+  }
+
+  // ---------------- drag drop evaluation ----------------
+  function evaluateDrop(piece){
+    var s = currentStep();
+    var cellDef = cellByKey(s, piece.cell);
+    if (s.task === "drag-equator") handleEquatorDrop(s, piece, cellDef);
+    else if (s.task === "pair-homologs") handlePairDrop(s, piece, cellDef);
+  }
+
+  function onEquator(cellDef, x, y){
+    var c = cellDef.rect;
+    if (cellDef.axis === "v") return Math.abs(y - c.cy) < 26 && Math.abs(x - c.cx) < c.rx*0.85;
+    return Math.abs(x - c.cx) < 22 && Math.abs(y - c.cy) < c.ry*0.85;
+  }
+
+  function handleEquatorDrop(s, piece, cellDef){
+    if (onEquator(cellDef, piece.x, piece.y)){
+      var idx = slotIndex(piece.cell);
+      var slots = cellDef.axis === "v" ? SLOTS_V : SLOTS_H;
+      var off = slots[idx % slots.length];
+      if (cellDef.axis === "v"){ piece.x = cellDef.rect.cx + off; piece.y = cellDef.rect.cy; piece.rot = 0; }
+      else { piece.x = cellDef.rect.cx; piece.y = cellDef.rect.cy + off; piece.rot = 90; }
+      piece.locked = true; piece.draggable = false;
+      redrawPiece(piece);
+      if (s.bundleAsUnit && piece.bundleId){
+        state.pieces.forEach(function(p2){
+          if (p2 !== piece && p2.bundleId === piece.bundleId){
+            var off2 = off + (cellDef.axis === "v" ? 16 : 12);
+            if (cellDef.axis === "v"){ p2.x = cellDef.rect.cx + off2; p2.y = cellDef.rect.cy; p2.rot = 0; }
+            else { p2.x = cellDef.rect.cx; p2.y = cellDef.rect.cy + off2; p2.rot = 90; }
+            p2.locked = true; p2.draggable = false;
+            redrawPiece(p2);
+          }
+        });
+      }
+      state.solvedCount += 1;
+      checkStepDone();
+    } else {
+      rejectSnapBack(piece);
+    }
+  }
+
+  function handlePairDrop(s, piece, cellDef){
+    var THRESH = 46, best = null, bestDist = Infinity;
+    state.pieces.forEach(function(p2){
+      if (p2 === piece || p2.locked) return;
+      var d = Math.hypot(p2.x - piece.x, p2.y - piece.y);
+      if (d < bestDist){ bestDist = d; best = p2; }
+    });
+    if (best && bestDist < THRESH){
+      if (best.pairKey === piece.pairKey && best.colorKey !== piece.colorKey){
+        var midX = (best.x + piece.x) / 2, midY = (best.y + piece.y) / 2;
+        var bundleId = piece.pairKey + "-bundle";
+        piece.x = midX - 14; piece.y = midY;
+        best.x = midX + 14; best.y = midY;
+        piece.bundleId = bundleId; best.bundleId = bundleId;
+        piece.locked = true; best.locked = true;
+        piece.draggable = false; best.draggable = false;
+        redrawPiece(piece); redrawPiece(best);
+        state.solvedCount += 1;
+        toast("상동염색체가 접합되어 2가염색체가 되었습니다.");
+        checkStepDone();
+      } else {
+        toast("짝이 아닙니다 — 같은 크기의 상동염색체끼리만 접합할 수 있어요.");
+        rejectSnapBack(piece);
+      }
+    } else {
+      rejectSnapBack(piece);
+    }
+  }
+
+  function rejectSnapBack(piece){
+    var rec = state.els[piece.id];
+    rec.g.classList.remove("reject");
+    void rec.g.offsetWidth;
+    rec.g.classList.add("reject");
+    setTimeout(function(){ rec.g.classList.remove("reject"); }, 400);
+  }
+
+  // ---------------- button-triggered separation ----------------
+  function doSeparate(){
+    var s = currentStep();
+    if (s.separateMode === "homolog"){
+      var seen = {};
+      state.pieces.slice().forEach(function(piece){
+        if (!piece.bundleId || seen[piece.bundleId]) return;
+        seen[piece.bundleId] = true;
+        var partner = state.pieces.filter(function(p2){ return p2!==piece && p2.bundleId===piece.bundleId; })[0];
+        var cellDef = cellByKey(s, piece.cell);
+        var idx = slotIndex(piece.cell + "-pole");
+        var offs = cellDef.axis === "v" ? POLE_V : POLE_H;
+        var off = offs[idx % offs.length];
+        var poleA, poleB;
+        if (cellDef.axis === "v"){
+          poleA = { x: cellDef.rect.cx + off, y: cellDef.rect.cy - cellDef.rect.ry - 40 };
+          poleB = { x: cellDef.rect.cx + off, y: cellDef.rect.cy + cellDef.rect.ry + 40 };
+        } else {
+          poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
+          poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
+        }
+        piece.x = poleA.x; piece.y = poleA.y; piece.rot = cellDef.axis==="v" ? 90:0;
+        piece.bundleId = null; piece.locked = true; piece.draggable = false;
+        redrawPiece(piece);
+        if (partner){
+          partner.x = poleB.x; partner.y = poleB.y; partner.rot = cellDef.axis==="v" ? 90:0;
+          partner.bundleId = null; partner.locked = true; partner.draggable = false;
+          redrawPiece(partner);
+        }
+      });
+    } else {
+      state.pieces.slice().forEach(function(piece){
+        var cellDef = cellByKey(s, piece.cell);
+        var startX = piece.x, startY = piece.y;
+        var idx = slotIndex(piece.cell + "-pole");
+        var offs = cellDef.axis === "v" ? POLE_V : POLE_H;
+        var off = offs[idx % offs.length];
+        var poleA, poleB;
+        if (cellDef.axis === "v"){
+          poleA = { x: cellDef.rect.cx + off, y: cellDef.rect.cy - cellDef.rect.ry - 40 };
+          poleB = { x: cellDef.rect.cx + off, y: cellDef.rect.cy + cellDef.rect.ry + 40 };
+        } else {
+          poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
+          poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
+        }
+        piece.duplicated = false; piece.rot = cellDef.axis==="v" ? 90:0; piece.locked = true; piece.draggable = false;
+        piece.x = poleA.x; piece.y = poleA.y;
+        redrawPiece(piece);
+        var mirror = mkPiece(piece.id+"-copy", piece.pairKey, piece.colorKey, piece.cell, startX, startY,
+          { rot: cellDef.axis==="v" ? 90:0, draggable:false, locked:true });
+        state.pieces.push(mirror);
+        addPieceEl(mirror);
+        setTimeout(function(){
+          mirror.x = poleB.x; mirror.y = poleB.y;
+          redrawPiece(mirror);
+        }, 20);
+      });
+    }
+    state.solvedCount = 1;
+    toast(currentStep().separateMode === "homolog" ? "상동염색체가 분리되어 양 극으로 이동했습니다." : "염색분체가 분리되어 양 극으로 이동했습니다.");
+    checkStepDone();
+  }
+
+  // ---------------- cytokinesis (cell split) ----------------
+  function cytokinesisSplit(fromKey, toDefs, mapper, offsets){
+    var fromEls = state.cellEls[fromKey];
+    toDefs.forEach(function(def, di){
+      var startAttrs = fromEls.outer;
+      var newEl = el("ellipse", {
+        cx: startAttrs.getAttribute("cx"), cy: startAttrs.getAttribute("cy"),
+        rx: startAttrs.getAttribute("rx"), ry: startAttrs.getAttribute("ry"),
+        fill: "none", stroke: "var(--muted)", "stroke-width": 2, opacity: 0, class: "cellring"
+      });
+      svg.querySelectorAll("g")[0].appendChild(newEl);
+      var newNuc = null;
+      if (def.nucleus){
+        newNuc = el("ellipse", {
+          cx: startAttrs.getAttribute("cx"), cy: startAttrs.getAttribute("cy"),
+          rx: def.rect.rx*0.62, ry: def.rect.ry*0.62,
+          fill:"none", stroke:"var(--muted)", "stroke-width":1.4, "stroke-dasharray":"3 4", opacity:0, class:"cellring"
+        });
+        svg.querySelectorAll("g")[0].appendChild(newNuc);
+      }
+      setTimeout(function(){
+        newEl.setAttribute("cx", def.rect.cx); newEl.setAttribute("cy", def.rect.cy);
+        newEl.setAttribute("rx", def.rect.rx); newEl.setAttribute("ry", def.rect.ry);
+        newEl.setAttribute("opacity", 0.55);
+        if (newNuc){
+          newNuc.setAttribute("cx", def.rect.cx); newNuc.setAttribute("cy", def.rect.cy);
+          newNuc.setAttribute("opacity", 0.55);
+        }
+      }, 20);
+      state.cellEls[def.key] = { outer: newEl, nucleus: newNuc };
+    });
+    fromEls.outer.setAttribute("opacity", 0);
+    if (fromEls.nucleus) fromEls.nucleus.setAttribute("opacity", 0);
+    if (fromEls.spindleWrap) fromEls.spindleWrap.setAttribute("opacity", 0);
+
+    // snapshot group membership BEFORE mutating any piece.cell, so later
+    // reassignments don't shrink earlier pieces' groups mid-loop
+    var groups = {};
+    state.pieces.forEach(function(piece){
+      if (piece.cell !== fromKey) return;
+      var targetKey = mapper(piece);
+      (groups[targetKey] = groups[targetKey] || []).push(piece);
+    });
+    Object.keys(groups).forEach(function(targetKey){
+      var def = toDefs.filter(function(d){ return d.key === targetKey; })[0];
+      var order = groups[targetKey].slice().sort(function(a,b){ return (a.colorKey<b.colorKey)?-1:1; });
+      order.forEach(function(piece, idx){
+        var off = offsets[idx % offsets.length] || [0,0,piece.rot];
+        piece.cell = targetKey;
+        piece.x = def.rect.cx + off[0];
+        piece.y = def.rect.cy + off[1];
+        piece.rot = off[2] !== undefined ? off[2] : piece.rot;
+        redrawPiece(piece);
+      });
+    });
+  }
+
+  // ---------------- step lifecycle ----------------
+  function loadStep(idx){
+    state.stepIdx = idx;
+    var s = currentStep();
+    state.pieces = s.initPieces();
+    state.solvedCount = 0;
+    state.cellSlotCounter = {};
 
     stepBadge.textContent = s.badge;
     stepTitle.textContent = s.title;
     stepDesc.textContent = s.desc;
-    if (s.callout){
-      calloutEl.hidden = false;
-      calloutEl.textContent = "⚠ " + s.callout;
-    } else {
-      calloutEl.hidden = true;
-    }
+    if (s.callout){ calloutEl.hidden = false; calloutEl.textContent = "⚠ " + s.callout; }
+    else calloutEl.hidden = true;
 
-    stepCount.textContent = (state.step + 1) + " / " + list.length;
+    stepCount.textContent = (state.stepIdx + 1) + " / " + state.steps.length;
     phaseGroup.textContent = state.mode === "mitosis" ? "체세포분열" : "감수분열(생식세포분열)";
-    var cellNums = { 0:1,1:1,2:1,3:1,4:2 };
-    var n;
-    if (state.mode === "mitosis"){
-      n = state.step < 4 ? 1 : 2;
-    } else {
-      n = state.step < 4 ? 1 : (state.step < 8 ? 2 : 4);
-    }
-    cellCount.textContent = "세포 수: " + n;
+    cellCount.textContent = "세포 수: " + s.cells.length;
 
-    prevBtn.disabled = state.step === 0;
-    nextBtn.disabled = state.step === list.length - 1;
+    actionBtn.hidden = s.task !== "action";
+    if (s.task === "action"){ actionBtn.textContent = s.actionLabel; actionBtn.disabled = false; }
 
+    rebuildStage();
     renderTimeline();
   }
 
+  function checkStepDone(){
+    updateInstruction();
+    updateControls();
+    renderTimeline();
+    if (isStepDone() && currentStep().isFinal){
+      setTimeout(showCompletionModal, 700);
+    }
+  }
+
+  function isStepDone(){
+    var s = currentStep();
+    return state.solvedCount >= s.required;
+  }
+
+  function updateInstruction(){
+    var s = currentStep();
+    var done = isStepDone();
+    instructionEl.classList.toggle("done", done);
+    instructionText.textContent = done ? "잘했어요! 다음 단계로 진행하세요." : s.instruction;
+    instructionProgress.textContent = state.solvedCount + " / " + s.required;
+  }
+
+  function updateControls(){
+    var s = currentStep();
+    var done = isStepDone();
+    prevBtn.disabled = state.stepIdx === 0;
+    nextBtn.disabled = state.stepIdx === state.steps.length - 1 || !done;
+    nextBtn.hidden = !!s.isFinal;
+    if (s.task === "action") actionBtn.disabled = done;
+  }
+
   function renderTimeline(){
-    var list = steps();
     timelineEl.innerHTML = "";
-    list.forEach(function(s, i){
+    state.steps.forEach(function(s, i){
       var b = document.createElement("button");
       b.textContent = s.badge;
-      if (i === state.step) b.className = "current";
-      b.addEventListener("click", function(){
-        stopPlay();
-        state.step = i;
-        render();
-      });
+      if (i === state.stepIdx) b.className = "current";
+      else if (i < state.stepIdx) b.className = "solved";
+      b.addEventListener("click", function(){ loadStep(i); });
       timelineEl.appendChild(b);
     });
   }
 
+  function solveCurrentStep(){
+    var s = currentStep();
+    if (s.task === "replicate"){
+      state.pieces.slice().forEach(function(p){
+        if (p.stage === "thread"){ ctxReplicate(p); ctxCondense(state.pieces[state.pieces.length-1]); }
+      });
+    } else if (s.task === "pair-homologs"){
+      var byPair = {};
+      state.pieces.forEach(function(p){ (byPair[p.pairKey] = byPair[p.pairKey] || []).push(p); });
+      Object.keys(byPair).forEach(function(k){
+        var arr = byPair[k];
+        if (arr.length === 2 && !arr[0].locked){
+          arr[0].x = arr[1].x + 30; arr[0].y = arr[1].y;
+          handlePairDrop(s, arr[0], cellByKey(s, arr[0].cell));
+        }
+      });
+    } else if (s.task === "drag-equator"){
+      state.pieces.slice().forEach(function(p){
+        if (p.locked) return;
+        var cellDef = cellByKey(s, p.cell);
+        p.x = cellDef.rect.cx; p.y = cellDef.rect.cy;
+        handleEquatorDrop(s, p, cellDef);
+      });
+    } else if (s.task === "action"){
+      if (s.onAction) s.onAction(); else doSeparate();
+      state.solvedCount = s.required;
+      checkStepDone();
+    }
+  }
+
+  // ---------------- completion modal ----------------
+  function showCompletionModal(){
+    modalTitle.textContent = "축하합니다!";
+    modalDesc.textContent = state.mode === "mitosis"
+      ? "체세포분열 과정을 성공적으로 완료했습니다. 딸세포 2개(2n=4)가 모세포와 동일한 염색체를 가졌습니다."
+      : "생식세포분열(감수분열) 과정을 성공적으로 완료했습니다. 생식세포 4개(n=2)가 만들어졌습니다.";
+    modalOverlay.classList.add("open");
+  }
+  modalRestart.addEventListener("click", function(){
+    modalOverlay.classList.remove("open");
+    loadStep(0);
+  });
+
+  // ---------------- top-level UI wiring ----------------
   function setMode(mode){
-    stopPlay();
     state.mode = mode;
-    state.step = 0;
+    state.steps = mode === "mitosis" ? buildMitosisSteps() : buildMeiosisSteps();
     btnMitosis.classList.toggle("active", mode === "mitosis");
     btnMeiosis.classList.toggle("active", mode === "meiosis");
     btnMitosis.setAttribute("aria-selected", mode === "mitosis");
     btnMeiosis.setAttribute("aria-selected", mode === "meiosis");
-    render();
+    modalOverlay.classList.remove("open");
+    loadStep(0);
   }
 
-  function go(delta){
-    var list = steps();
-    var next = state.step + delta;
-    if (next < 0 || next >= list.length){
-      stopPlay();
-      return;
-    }
-    state.step = next;
-    render();
-  }
-
-  function stopPlay(){
-    state.playing = false;
-    playBtn.textContent = "▶ 재생";
-    if (state.timer){ clearInterval(state.timer); state.timer = null; }
-  }
-
-  function togglePlay(){
-    if (state.playing){ stopPlay(); return; }
-    var list = steps();
-    if (state.step >= list.length - 1) state.step = 0;
-    state.playing = true;
-    playBtn.textContent = "⏸ 정지";
-    state.timer = setInterval(function(){
-      var list2 = steps();
-      if (state.step >= list2.length - 1){ stopPlay(); return; }
-      state.step += 1;
-      render();
-    }, 1800);
-    render();
-  }
-
+  prevBtn.addEventListener("click", function(){ if (state.stepIdx > 0) loadStep(state.stepIdx - 1); });
+  nextBtn.addEventListener("click", function(){ if (!nextBtn.disabled) loadStep(state.stepIdx + 1); });
+  resetBtn.addEventListener("click", function(){ loadStep(state.stepIdx); });
+  solveBtn.addEventListener("click", function(){ solveCurrentStep(); });
+  actionBtn.addEventListener("click", function(){
+    var s = currentStep();
+    if (s.onAction) s.onAction(); else doSeparate();
+    state.solvedCount = s.required;
+    checkStepDone();
+  });
   btnMitosis.addEventListener("click", function(){ setMode("mitosis"); });
   btnMeiosis.addEventListener("click", function(){ setMode("meiosis"); });
-  prevBtn.addEventListener("click", function(){ stopPlay(); go(-1); });
-  nextBtn.addEventListener("click", function(){ stopPlay(); go(1); });
-  playBtn.addEventListener("click", togglePlay);
 
-  render();
+  loadStep(0);
 })();
 </script>
