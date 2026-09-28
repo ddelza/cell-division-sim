@@ -1032,9 +1032,18 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   // piece stays in the same cell (coordinate frame) so nothing snaps back
   function applyCarry(pieces){
     if (!state.carry) return pieces;
+    var used = {};
     pieces.forEach(function(p){
-      var c = state.carry[p.colorKey];
-      if (c && c.cell === p.cell){ p.x = c.x; p.y = c.y; }
+      var arr = state.carry[p.colorKey];
+      if (!arr) return;
+      var from = used[p.colorKey] || 0;
+      for (var i = from; i < arr.length; i++){
+        if (arr[i].cell === p.cell){
+          p.x = arr[i].x; p.y = arr[i].y;
+          used[p.colorKey] = i + 1;
+          break;
+        }
+      }
     });
     return pieces;
   }
@@ -1653,7 +1662,9 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   nextBtn.addEventListener("click", function(){
     if (nextBtn.disabled) return;
     var snap = {};
-    state.pieces.forEach(function(p){ snap[p.colorKey] = { x: p.x, y: p.y, cell: p.cell }; });
+    state.pieces.forEach(function(p){
+      (snap[p.colorKey] = snap[p.colorKey] || []).push({ x: p.x, y: p.y, cell: p.cell });
+    });
     state.carry = snap;
     loadStep(state.stepIdx + 1);
   });
