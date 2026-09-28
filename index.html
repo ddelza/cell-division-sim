@@ -184,7 +184,14 @@ header p{color:var(--muted);font-size:14.5px;margin:2px 0 0;}
   border:1px dashed var(--scope-ring);
   pointer-events:none;
 }
-.piece{cursor:grab;transition:transform .55s cubic-bezier(.2,.7,.3,1);}
+.piece{
+  cursor:grab;
+  transition:transform .55s cubic-bezier(.2,.7,.3,1);
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:none;
+}
 .piece.locked{cursor:default;}
 .piece.dragging{cursor:grabbing;transition:none;}
 .piece.reject{animation:shake .38s ease;}
@@ -583,8 +590,12 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     });
   }
 
+  function hitArea(){
+    return el("circle", { cx: 0, cy: 0, r: 26, fill: "#000", opacity: 0, "pointer-events": "all" });
+  }
+
   function buildShapeChildren(piece){
-    var out = [];
+    var out = [hitArea()];
     if (piece.thread){
       out.push(threadPath(piece.colorKey, piece.seed || 0));
       if (piece.stage === "sistered"){
@@ -723,12 +734,17 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   function buildMitosisSteps(){
     return [
       {
-        key: "interphase-prophase", badge: "간기 → 전기", title: "간기·전기 — 복제와 응축",
-        desc: "간기 동안 DNA가 복제되어 유전 정보가 2배가 된다. 전기에는 염색사가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
+        key: "interphase-prophase", badge: "간기 → 전기", title: "간기·전기 — 핵막 제거와 복제·응축",
+        desc: "간기 동안 핵막 안에서 DNA가 복제되어 유전 정보가 2배가 된다. 전기가 되면 핵막이 사라지고, 염색사가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
         task: "replicate", required: 4,
         instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
+        preAction: {
+          label: "핵막 제거", toast: "핵막이 사라졌습니다.",
+          instruction: "먼저 「핵막 제거」 버튼을 눌러 핵막을 없애세요.",
+          run: function(){ var rec = state.cellEls["single"]; if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0); }
+        },
         initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
-        cells: [{ rect: SINGLE, axis: "h", nucleus: false }]
+        cells: [{ rect: SINGLE, axis: "h", nucleus: true }]
       },
       {
         key: "metaphase", badge: "중기", title: "중기 — 적도판 정렬",
@@ -759,9 +775,19 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       },
       {
         key: "telophase", badge: "말기 · 세포질분열", title: "말기와 세포질분열 — 딸세포 완성",
-        desc: "양 옆에 핵막이 다시 생기고 세포질이 갈라져 2개의 딸세포가 만들어진다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
+        desc: "세포질이 갈라져 2개의 딸세포가 만들어지고, 각 딸세포에 핵막이 다시 생긴다. 두 딸세포는 염색체 수(2n=4)와 유전 정보가 모세포와 완전히 동일하다.",
         task: "action", actionLabel: "세포질 분열", required: 1, isFinal: true,
         instruction: "아래 「세포질 분열」 버튼을 눌러 딸세포 2개를 완성하세요.",
+        postAction: {
+          label: "핵막 형성", toast: "핵막이 다시 형성되었습니다.",
+          instruction: "이제 「핵막 형성」 버튼을 눌러 두 딸세포의 핵을 완성하세요.",
+          run: function(){
+            ["left","right"].forEach(function(k){
+              var rec = state.cellEls[k];
+              if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0.55);
+            });
+          }
+        },
         onAction: function(){ cytokinesisSplit("single", [
           { key:"left", rect: LEFT2, nucleus:true }, { key:"right", rect: RIGHT2, nucleus:true }
         ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[-14,-58,90],[14,-18,90],[-12,20,90],[12,58,90]]); },
@@ -783,12 +809,17 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   function buildMeiosisSteps(){
     return [
       {
-        key: "interphase-prophase1", badge: "간기 → 전기Ⅰ", title: "간기·전기Ⅰ — 복제와 응축",
-        desc: "체세포분열과 마찬가지로 DNA가 복제되어 유전 정보가 2배가 되고, 이어서 염색체가 응축되어 나타난다.",
+        key: "interphase-prophase1", badge: "간기 → 전기Ⅰ", title: "간기·전기Ⅰ — 핵막 제거와 복제·응축",
+        desc: "체세포분열과 마찬가지로 핵막 안에서 DNA가 복제되어 유전 정보가 2배가 되고, 전기Ⅰ이 되면 핵막이 사라지며 염색체가 응축되어 나타난다.",
         task: "replicate", required: 4,
         instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
+        preAction: {
+          label: "핵막 제거", toast: "핵막이 사라졌습니다.",
+          instruction: "먼저 「핵막 제거」 버튼을 눌러 핵막을 없애세요.",
+          run: function(){ var rec = state.cellEls["single"]; if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0); }
+        },
         initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
-        cells: [{ rect: SINGLE, axis:"h", nucleus:false }]
+        cells: [{ rect: SINGLE, axis:"h", nucleus:true }]
       },
       {
         key: "prophase1-synapsis", badge: "전기Ⅰ (접합)", title: "전기Ⅰ — 상동염색체의 접합",
@@ -898,6 +929,16 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         callout: "체세포분열은 딸세포 2개(2n) · 생식세포분열은 딸세포 4개(n) — 염색체 수와 개수가 모두 다르게 끝난다.",
         task: "action", actionLabel:"세포질 분열", required: 1, isFinal: true,
         instruction: "아래 「세포질 분열」 버튼을 눌러 생식세포 4개를 완성하세요.",
+        postAction: {
+          label: "핵막 형성", toast: "핵막이 형성되었습니다.",
+          instruction: "이제 「핵막 형성」 버튼을 눌러 네 생식세포의 핵을 완성하세요.",
+          run: function(){
+            ["tl","tr","bl","br"].forEach(function(k){
+              var rec = state.cellEls[k];
+              if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0.55);
+            });
+          }
+        },
         onAction: function(){
           cytokinesisSplit("left", [
             { key:"tl", rect: TL, nucleus:true }, { key:"bl", rect: BL, nucleus:true }
@@ -938,7 +979,8 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     solvedCount: 0,
     cellSlotCounter: {},
     els: {},
-    cellEls: {}
+    cellEls: {},
+    carry: null
   };
 
   var btnMitosis = document.getElementById("btn-mitosis");
@@ -984,6 +1026,17 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     var idx = state.cellSlotCounter[key];
     state.cellSlotCounter[key] += 1;
     return idx;
+  }
+
+  // carry the user's own arrangement forward into the next step, wherever the
+  // piece stays in the same cell (coordinate frame) so nothing snaps back
+  function applyCarry(pieces){
+    if (!state.carry) return pieces;
+    pieces.forEach(function(p){
+      var c = state.carry[p.colorKey];
+      if (c && c.cell === p.cell){ p.x = c.x; p.y = c.y; }
+    });
+    return pieces;
   }
 
   var toastTimer = null;
@@ -1050,12 +1103,13 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   // ---------------- drag & interaction ----------------
   var drag = null;
 
-  var LONG_PRESS_MS = 480;
-  var LONG_PRESS_MOVE_TOLERANCE = 12;
+  var LONG_PRESS_MS = 420;
+  var LONG_PRESS_MOVE_TOLERANCE = 20;
 
   function attachHandlers(piece, g){
     g.addEventListener("pointerdown", function(e){ onPointerDown(e, piece, g); });
-    g.addEventListener("contextmenu", function(e){ e.preventDefault(); onRightClick(piece, e); });
+    g.addEventListener("contextmenu", function(e){ e.preventDefault(); e.stopPropagation(); onRightClick(piece, e); });
+    g.addEventListener("dblclick", function(e){ e.preventDefault(); onRightClick(piece, e); });
 
     // touch/pen have no right-click: a long-press stands in for it
     var pressTimer = null, pressStartX = 0, pressStartY = 0, longPressFired = false;
@@ -1130,6 +1184,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   function onRightClick(piece, e){
     var s = currentStep();
     if (s.task !== "replicate") return;
+    if (s.preAction && !state.preActionDone){
+      toast("먼저 「" + s.preAction.label + "」를 눌러 핵막을 없애세요.");
+      return;
+    }
     ctxPiece = piece;
     var canReplicate = piece.stage === "thread";
     var canCondense = piece.stage === "sistered";
@@ -1146,6 +1204,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     if (!ctxMenu.contains(e.target)) hideCtx();
   });
   ctxMenu.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  // safety net: never let the browser's own menu win inside the stage,
+  // even if a long-press lands slightly off a piece's painted pixels
+  svg.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  document.getElementById("scope").addEventListener("contextmenu", function(e){ e.preventDefault(); });
   ctxMenu.querySelectorAll("li").forEach(function(li){
     li.addEventListener("click", function(){
       if (li.classList.contains("disabled") || !ctxPiece) return;
@@ -1216,20 +1278,24 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       var idx = slotIndex(piece.cell);
       var slots = cellDef.axis === "v" ? SLOTS_V : SLOTS_H;
       var off = slots[idx % slots.length];
-      if (cellDef.axis === "v"){ piece.x = cellDef.rect.cx + off; piece.y = cellDef.rect.cy; piece.rot = 0; }
-      else { piece.x = cellDef.rect.cx; piece.y = cellDef.rect.cy + off; piece.rot = 90; }
+      var partner = null;
+      if (s.bundleAsUnit && piece.bundleId){
+        partner = state.pieces.filter(function(p2){ return p2 !== piece && p2.bundleId === piece.bundleId; })[0];
+      }
+      if (cellDef.axis === "v"){
+        // equator runs horizontally: a bundle sits side by side along that same line
+        piece.x = cellDef.rect.cx + off; piece.y = cellDef.rect.cy; piece.rot = 0;
+        if (partner){ partner.x = cellDef.rect.cx + off + 16; partner.y = cellDef.rect.cy; partner.rot = 0; }
+      } else {
+        // equator runs vertically: a bundle sits side by side (left/right) at the same slot
+        piece.x = cellDef.rect.cx - (partner ? 14 : 0); piece.y = cellDef.rect.cy + off; piece.rot = 90;
+        if (partner){ partner.x = cellDef.rect.cx + 14; partner.y = cellDef.rect.cy + off; partner.rot = 90; }
+      }
       piece.locked = true; piece.draggable = false;
       redrawPiece(piece);
-      if (s.bundleAsUnit && piece.bundleId){
-        state.pieces.forEach(function(p2){
-          if (p2 !== piece && p2.bundleId === piece.bundleId){
-            var off2 = off + (cellDef.axis === "v" ? 16 : 12);
-            if (cellDef.axis === "v"){ p2.x = cellDef.rect.cx + off2; p2.y = cellDef.rect.cy; p2.rot = 0; }
-            else { p2.x = cellDef.rect.cx; p2.y = cellDef.rect.cy + off2; p2.rot = 90; }
-            p2.locked = true; p2.draggable = false;
-            redrawPiece(p2);
-          }
-        });
+      if (partner){
+        partner.locked = true; partner.draggable = false;
+        redrawPiece(partner);
       }
       state.solvedCount += 1;
       checkStepDone();
@@ -1346,6 +1412,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   // ---------------- cytokinesis (cell split) ----------------
   function cytokinesisSplit(fromKey, toDefs, mapper, offsets){
     var fromEls = state.cellEls[fromKey];
+    var deferNucleus = !!currentStep().postAction;
     toDefs.forEach(function(def, di){
       var startAttrs = fromEls.outer;
       var newEl = el("ellipse", {
@@ -1369,7 +1436,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         newEl.setAttribute("opacity", 0.55);
         if (newNuc){
           newNuc.setAttribute("cx", def.rect.cx); newNuc.setAttribute("cy", def.rect.cy);
-          newNuc.setAttribute("opacity", 0.55);
+          if (!deferNucleus) newNuc.setAttribute("opacity", 0.55);
         }
       }, 20);
       state.cellEls[def.key] = { outer: newEl, nucleus: newNuc };
@@ -1404,9 +1471,12 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   function loadStep(idx){
     state.stepIdx = idx;
     var s = currentStep();
-    state.pieces = s.initPieces();
+    state.pieces = applyCarry(s.initPieces());
+    state.carry = null;
     state.solvedCount = 0;
     state.cellSlotCounter = {};
+    state.preActionDone = false;
+    state.postActionDone = false;
 
     stepBadge.textContent = s.badge;
     stepTitle.textContent = s.title;
@@ -1418,11 +1488,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     phaseGroup.textContent = state.mode === "mitosis" ? "체세포분열" : "감수분열(생식세포분열)";
     cellCount.textContent = "세포 수: " + s.cells.length;
 
-    actionBtn.hidden = s.task !== "action";
-    if (s.task === "action"){ actionBtn.textContent = s.actionLabel; actionBtn.disabled = false; }
-
     rebuildStage();
     renderTimeline();
+    updateInstruction();
+    updateControls();
   }
 
   function checkStepDone(){
@@ -1434,16 +1503,32 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     }
   }
 
-  function isStepDone(){
+  function mainTaskDone(){
     var s = currentStep();
     return state.solvedCount >= s.required;
+  }
+
+  function isStepDone(){
+    var s = currentStep();
+    if (s.preAction && !state.preActionDone) return false;
+    if (!mainTaskDone()) return false;
+    if (s.postAction && !state.postActionDone) return false;
+    return true;
   }
 
   function updateInstruction(){
     var s = currentStep();
     var done = isStepDone();
     instructionEl.classList.toggle("done", done);
-    instructionText.textContent = done ? "잘했어요! 다음 단계로 진행하세요." : s.instruction;
+    if (done){
+      instructionText.textContent = "잘했어요! 다음 단계로 진행하세요.";
+    } else if (s.preAction && !state.preActionDone){
+      instructionText.textContent = s.preAction.instruction;
+    } else if (mainTaskDone() && s.postAction && !state.postActionDone){
+      instructionText.textContent = s.postAction.instruction;
+    } else {
+      instructionText.textContent = s.instruction;
+    }
     instructionProgress.textContent = state.solvedCount + " / " + s.required;
   }
 
@@ -1453,7 +1538,40 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     prevBtn.disabled = state.stepIdx === 0;
     nextBtn.disabled = state.stepIdx === state.steps.length - 1 || !done;
     nextBtn.hidden = !!s.isFinal;
-    if (s.task === "action") actionBtn.disabled = done;
+
+    if (s.preAction && !state.preActionDone){
+      actionBtn.hidden = false; actionBtn.textContent = s.preAction.label; actionBtn.disabled = false;
+    } else if (s.task === "action" && !mainTaskDone()){
+      actionBtn.hidden = false; actionBtn.textContent = s.actionLabel; actionBtn.disabled = false;
+    } else if (s.postAction && mainTaskDone() && !state.postActionDone){
+      actionBtn.hidden = false; actionBtn.textContent = s.postAction.label; actionBtn.disabled = false;
+    } else {
+      actionBtn.hidden = true;
+    }
+  }
+
+  function runStageAction(){
+    var s = currentStep();
+    if (s.preAction && !state.preActionDone){
+      s.preAction.run();
+      state.preActionDone = true;
+      toast(s.preAction.toast || (s.preAction.label + " 완료"));
+      checkStepDone();
+      return;
+    }
+    if (s.task === "action" && !mainTaskDone()){
+      if (s.onAction) s.onAction(); else doSeparate();
+      state.solvedCount = s.required;
+      checkStepDone();
+      return;
+    }
+    if (s.postAction && mainTaskDone() && !state.postActionDone){
+      s.postAction.run();
+      state.postActionDone = true;
+      toast(s.postAction.toast || (s.postAction.label + " 완료"));
+      checkStepDone();
+      return;
+    }
   }
 
   function renderTimeline(){
@@ -1470,6 +1588,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
 
   function solveCurrentStep(){
     var s = currentStep();
+    if (s.preAction && !state.preActionDone){
+      s.preAction.run();
+      state.preActionDone = true;
+    }
     if (s.task === "replicate"){
       state.pieces.slice().forEach(function(p){
         if (p.stage === "thread"){ ctxReplicate(p); ctxCondense(state.pieces[state.pieces.length-1]); }
@@ -1494,8 +1616,12 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     } else if (s.task === "action"){
       if (s.onAction) s.onAction(); else doSeparate();
       state.solvedCount = s.required;
-      checkStepDone();
     }
+    if (s.postAction && !state.postActionDone){
+      s.postAction.run();
+      state.postActionDone = true;
+    }
+    checkStepDone();
   }
 
   // ---------------- completion modal ----------------
@@ -1524,15 +1650,16 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   }
 
   prevBtn.addEventListener("click", function(){ if (state.stepIdx > 0) loadStep(state.stepIdx - 1); });
-  nextBtn.addEventListener("click", function(){ if (!nextBtn.disabled) loadStep(state.stepIdx + 1); });
+  nextBtn.addEventListener("click", function(){
+    if (nextBtn.disabled) return;
+    var snap = {};
+    state.pieces.forEach(function(p){ snap[p.colorKey] = { x: p.x, y: p.y, cell: p.cell }; });
+    state.carry = snap;
+    loadStep(state.stepIdx + 1);
+  });
   resetBtn.addEventListener("click", function(){ loadStep(state.stepIdx); });
   solveBtn.addEventListener("click", function(){ solveCurrentStep(); });
-  actionBtn.addEventListener("click", function(){
-    var s = currentStep();
-    if (s.onAction) s.onAction(); else doSeparate();
-    state.solvedCount = s.required;
-    checkStepDone();
-  });
+  actionBtn.addEventListener("click", runStageAction);
   btnMitosis.addEventListener("click", function(){ setMode("mitosis"); });
   btnMeiosis.addEventListener("click", function(){ setMode("meiosis"); });
 
