@@ -728,22 +728,47 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     });
   }
 
+  // default (non-carried) starting state for a prophase step: DNA already
+  // replicated in the preceding interphase step, waiting to condense
+  function sisteredPairPieces(prefix, scat){
+    var defs = [["Apat","A"],["Amat","A"],["Bpat","B"],["Bmat","B"]];
+    var out = [];
+    defs.forEach(function(d,i){
+      var s = scat[i];
+      var baseX = SINGLE.cx + (i%2===0? -78:74), baseY = SINGLE.cy + (i<2? -50:56);
+      var ct = { x: SINGLE.cx+s.dx, y: SINGLE.cy+s.dy, rot: s.rot };
+      out.push(mkPiece(prefix+"-"+i, d[1], d[0], "single", baseX, baseY,
+        { thread:true, seed:i*0.9, draggable:false, stage:"sistered", condensedTarget: ct }));
+      out.push(mkPiece(prefix+"-"+i+"-sis", d[1], d[0], "single", baseX+16, baseY+9,
+        { thread:true, seed:i*0.9+0.6, draggable:false, stage:"sistered", condensedTarget: ct }));
+    });
+    return out;
+  }
+
   // =====================================================================
   // STEP DEFINITIONS
   // =====================================================================
   function buildMitosisSteps(){
     return [
       {
-        key: "interphase-prophase", badge: "간기 → 전기", title: "간기·전기 — 핵막 제거와 복제·응축",
-        desc: "간기 동안 핵막 안에서 DNA가 복제되어 유전 정보가 2배가 된다. 전기가 되면 핵막이 사라지고, 염색사가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
-        task: "replicate", required: 4,
-        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
+        key: "interphase", badge: "간기", title: "간기 — DNA 복제",
+        desc: "핵막에 둘러싸인 채로 DNA가 복제되어 유전 정보가 2배가 된다. 아직 염색사는 가늘고 길게 풀어져 있어 하나하나 구분해 관찰할 수 없다.",
+        task: "replicate", required: 4, progressOn: "replicate", allowCondense: false,
+        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기)해 복제하세요.",
+        initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
+        cells: [{ rect: SINGLE, axis: "h", nucleus: true }]
+      },
+      {
+        key: "prophase", badge: "전기", title: "전기 — 핵막 제거와 응축",
+        desc: "핵막이 사라지고, 이미 복제되어 있던 DNA(염색사)가 굵고 짧게 응축되어 X자 모양(염색분체 2개)의 염색체로 나타난다.",
+        task: "replicate", required: 4, allowReplicate: false,
+        instruction: "각 염색사 쌍을 오른쪽 클릭(모바일은 꾹 누르기)해 응축시키세요.",
         preAction: {
           label: "핵막 제거", toast: "핵막이 사라졌습니다.",
           instruction: "먼저 「핵막 제거」 버튼을 눌러 핵막을 없애세요.",
           run: function(){ var rec = state.cellEls["single"]; if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0); }
         },
-        initPieces: function(){ return replicateCondensePieces("m1", SCATTER4); },
+        initPieces: function(){ return sisteredPairPieces("m1p", SCATTER4); },
         cells: [{ rect: SINGLE, axis: "h", nucleus: true }]
       },
       {
@@ -809,16 +834,24 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   function buildMeiosisSteps(){
     return [
       {
-        key: "interphase-prophase1", badge: "간기 → 전기Ⅰ", title: "간기·전기Ⅰ — 핵막 제거와 복제·응축",
-        desc: "체세포분열과 마찬가지로 핵막 안에서 DNA가 복제되어 유전 정보가 2배가 되고, 전기Ⅰ이 되면 핵막이 사라지며 염색체가 응축되어 나타난다.",
-        task: "replicate", required: 4,
-        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기) → 복제하기 → 다시 오른쪽 클릭(꾹 누르기) → 응축하기 순서로 진행하세요.",
+        key: "interphase1", badge: "간기", title: "간기 — DNA 복제",
+        desc: "체세포분열과 마찬가지로 핵막에 둘러싸인 채로 DNA가 복제되어 유전 정보가 2배가 된다.",
+        task: "replicate", required: 4, progressOn: "replicate", allowCondense: false,
+        instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기)해 복제하세요.",
+        initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
+        cells: [{ rect: SINGLE, axis:"h", nucleus:true }]
+      },
+      {
+        key: "prophase1", badge: "전기Ⅰ", title: "전기Ⅰ — 핵막 제거와 응축",
+        desc: "핵막이 사라지고, 이미 복제되어 있던 염색사가 응축되어 나타난다.",
+        task: "replicate", required: 4, allowReplicate: false,
+        instruction: "각 염색사 쌍을 오른쪽 클릭(모바일은 꾹 누르기)해 응축시키세요.",
         preAction: {
           label: "핵막 제거", toast: "핵막이 사라졌습니다.",
           instruction: "먼저 「핵막 제거」 버튼을 눌러 핵막을 없애세요.",
           run: function(){ var rec = state.cellEls["single"]; if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0); }
         },
-        initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
+        initPieces: function(){ return sisteredPairPieces("e1p", SCATTER4B); },
         cells: [{ rect: SINGLE, axis:"h", nucleus:true }]
       },
       {
@@ -1198,9 +1231,9 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       return;
     }
     ctxPiece = piece;
-    var canReplicate = piece.stage === "thread";
-    var canCondense = piece.stage === "sistered";
-    var canUncondense = piece.stage === "condensed";
+    var canReplicate = piece.stage === "thread" && s.allowReplicate !== false;
+    var canCondense = piece.stage === "sistered" && s.allowCondense !== false;
+    var canUncondense = piece.stage === "condensed" && s.allowCondense !== false;
     ctxMenu.querySelector('[data-action="replicate"]').classList.toggle("disabled", !canReplicate);
     ctxMenu.querySelector('[data-action="condense"]').classList.toggle("disabled", !canCondense);
     ctxMenu.querySelector('[data-action="uncondense"]').classList.toggle("disabled", !canUncondense);
@@ -1237,6 +1270,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     addPieceEl(sister);
     redrawPiece(piece);
     toast("DNA가 복제되었습니다.");
+    if (currentStep().progressOn === "replicate"){
+      state.solvedCount += 1;
+      checkStepDone();
+    }
   }
   function ctxCondense(piece){
     if (piece.stage !== "sistered") return;
@@ -1249,9 +1286,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       { duplicated:true, rot:ct.rot, draggable:false, stage:"condensed", condensedTarget: ct });
     state.pieces.push(cp);
     addPieceEl(cp);
-    state.solvedCount += 1;
     toast("염색분체가 응축되어 염색체가 되었습니다.");
-    checkStepDone();
+    if (currentStep().progressOn !== "replicate"){
+      state.solvedCount += 1;
+      checkStepDone();
+    }
   }
   function ctxUncondense(piece){
     if (piece.stage !== "condensed") return;
@@ -1263,9 +1302,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       { thread:true, draggable:false, stage:"sistered", condensedTarget: piece.condensedTarget });
     state.pieces.push(s1, s2);
     addPieceEl(s1); addPieceEl(s2);
-    state.solvedCount = Math.max(0, state.solvedCount - 1);
     toast("염색체의 응축이 풀렸습니다.");
-    checkStepDone();
+    if (currentStep().progressOn !== "replicate"){
+      state.solvedCount = Math.max(0, state.solvedCount - 1);
+      checkStepDone();
+    }
   }
 
   // ---------------- drag drop evaluation ----------------
@@ -1602,9 +1643,12 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       state.preActionDone = true;
     }
     if (s.task === "replicate"){
-      state.pieces.slice().forEach(function(p){
-        if (p.stage === "thread"){ ctxReplicate(p); ctxCondense(state.pieces[state.pieces.length-1]); }
-      });
+      if (s.allowReplicate !== false){
+        state.pieces.slice().forEach(function(p){ if (p.stage === "thread") ctxReplicate(p); });
+      }
+      if (s.allowCondense !== false){
+        state.pieces.slice().forEach(function(p){ if (p.stage === "sistered") ctxCondense(p); });
+      }
     } else if (s.task === "pair-homologs"){
       var byPair = {};
       state.pieces.forEach(function(p){ (byPair[p.pairKey] = byPair[p.pairKey] || []).push(p); });
