@@ -688,6 +688,8 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
   var BL = { cx: 165, cy: 330, rx: 128, ry: 82 };
   var BR = { cx: 475, cy: 330, rx: 128, ry: 82 };
 
+  var BIVALENT_GAP = 7; // half-distance between the two homologs of a bivalent, so they visually touch
+
   var SLOTS_V = [-90,-30,30,90];
   var SLOTS_H = [-70,-24,24,70];
   var POLE_V  = [-60,-20,20,60];
@@ -838,7 +840,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         desc: "체세포분열과 마찬가지로 핵막에 둘러싸인 채로 DNA가 복제되어 유전 정보가 2배가 된다.",
         task: "replicate", required: 4, progressOn: "replicate", allowCondense: false,
         instruction: "각 염색사를 오른쪽 클릭(모바일은 꾹 누르기)해 복제하세요.",
-        initPieces: function(){ return replicateCondensePieces("e1", SCATTER4B); },
+        initPieces: function(){ return replicateCondensePieces("e1", SCATTER4); },
         cells: [{ rect: SINGLE, axis:"h", nucleus:true }]
       },
       {
@@ -851,7 +853,7 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
           instruction: "먼저 「핵막 제거」 버튼을 눌러 핵막을 없애세요.",
           run: function(){ var rec = state.cellEls["single"]; if (rec && rec.nucleus) rec.nucleus.setAttribute("opacity", 0); }
         },
-        initPieces: function(){ return sisteredPairPieces("e1p", SCATTER4B); },
+        initPieces: function(){ return sisteredPairPieces("e1p", SCATTER4); },
         cells: [{ rect: SINGLE, axis:"h", nucleus:true }]
       },
       {
@@ -877,10 +879,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "2가염색체 묶음(쌍)을 드래그하여 적도판 위로 옮기세요. 한 쌍씩 함께 움직입니다.",
         initPieces: function(){
           return [
-            mkPiece("e3-Apat","A","Apat","single", SINGLE.cx-60, SINGLE.cy-96, {duplicated:true, rot:90, bundleId:"A"}),
-            mkPiece("e3-Amat","A","Amat","single", SINGLE.cx-60, SINGLE.cy-80, {duplicated:true, rot:90, bundleId:"A"}),
-            mkPiece("e3-Bpat","B","Bpat","single", SINGLE.cx+60, SINGLE.cy+80, {duplicated:true, rot:90, bundleId:"B"}),
-            mkPiece("e3-Bmat","B","Bmat","single", SINGLE.cx+60, SINGLE.cy+96, {duplicated:true, rot:90, bundleId:"B"})
+            mkPiece("e3-Apat","A","Apat","single", SINGLE.cx-60-BIVALENT_GAP, SINGLE.cy-90, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e3-Amat","A","Amat","single", SINGLE.cx-60+BIVALENT_GAP, SINGLE.cy-90, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e3-Bpat","B","Bpat","single", SINGLE.cx+60-BIVALENT_GAP, SINGLE.cy+90, {duplicated:true, rot:90, bundleId:"B"}),
+            mkPiece("e3-Bmat","B","Bmat","single", SINGLE.cx+60+BIVALENT_GAP, SINGLE.cy+90, {duplicated:true, rot:90, bundleId:"B"})
           ];
         },
         cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true, equator:true }]
@@ -893,10 +895,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "아래 「상동염색체 분리」 버튼을 눌러 상동염색체를 양 극으로 분리하세요.",
         initPieces: function(){
           return [
-            mkPiece("e4-Apat","A","Apat","single", SINGLE.cx-6, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"A"}),
-            mkPiece("e4-Amat","A","Amat","single", SINGLE.cx-6, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"A"}),
-            mkPiece("e4-Bpat","B","Bpat","single", SINGLE.cx+6, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"B"}),
-            mkPiece("e4-Bmat","B","Bmat","single", SINGLE.cx+6, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"B"})
+            mkPiece("e4-Apat","A","Apat","single", SINGLE.cx-BIVALENT_GAP, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e4-Amat","A","Amat","single", SINGLE.cx+BIVALENT_GAP, SINGLE.cy-10, {duplicated:true, rot:90, bundleId:"A"}),
+            mkPiece("e4-Bpat","B","Bpat","single", SINGLE.cx-BIVALENT_GAP, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"B"}),
+            mkPiece("e4-Bmat","B","Bmat","single", SINGLE.cx+BIVALENT_GAP, SINGLE.cy+10, {duplicated:true, rot:90, bundleId:"B"})
           ];
         },
         cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true }]
@@ -1335,11 +1337,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
       if (cellDef.axis === "v"){
         // equator runs horizontally: a bundle sits side by side along that same line
         piece.x = cellDef.rect.cx + off; piece.y = cellDef.rect.cy; piece.rot = 0;
-        if (partner){ partner.x = cellDef.rect.cx + off + 16; partner.y = cellDef.rect.cy; partner.rot = 0; }
+        if (partner){ partner.x = cellDef.rect.cx + off + BIVALENT_GAP*2; partner.y = cellDef.rect.cy; partner.rot = 0; }
       } else {
         // equator runs vertically: a bundle sits side by side (left/right) at the same slot
-        piece.x = cellDef.rect.cx - (partner ? 14 : 0); piece.y = cellDef.rect.cy + off; piece.rot = 90;
-        if (partner){ partner.x = cellDef.rect.cx + 14; partner.y = cellDef.rect.cy + off; partner.rot = 90; }
+        piece.x = cellDef.rect.cx - (partner ? BIVALENT_GAP : 0); piece.y = cellDef.rect.cy + off; piece.rot = 90;
+        if (partner){ partner.x = cellDef.rect.cx + BIVALENT_GAP; partner.y = cellDef.rect.cy + off; partner.rot = 90; }
       }
       piece.locked = true; piece.draggable = false;
       redrawPiece(piece);
@@ -1363,11 +1365,10 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     });
     if (best && bestDist < THRESH){
       if (best.pairKey === piece.pairKey && best.colorKey !== piece.colorKey){
-        var midY = (best.y + piece.y) / 2;
-        var cx = cellDef.rect.cx;
+        var midX = (best.x + piece.x) / 2, midY = (best.y + piece.y) / 2;
         var bundleId = piece.pairKey + "-bundle";
-        piece.x = cx - 14; piece.y = midY; piece.rot = 90;
-        best.x = cx + 14; best.y = midY; best.rot = 90;
+        piece.x = midX - BIVALENT_GAP; piece.y = midY; piece.rot = 90;
+        best.x = midX + BIVALENT_GAP; best.y = midY; best.rot = 90;
         piece.bundleId = bundleId; best.bundleId = bundleId;
         piece.locked = true; best.locked = true;
         piece.draggable = false; best.draggable = false;
