@@ -1288,11 +1288,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
           poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
           poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
         }
-        piece.x = poleA.x; piece.y = poleA.y; piece.rot = cellDef.axis==="v" ? 90:0;
+        piece.x = poleA.x; piece.y = poleA.y; piece.rot = 90;
         piece.bundleId = null; piece.locked = true; piece.draggable = false;
         redrawPiece(piece);
         if (partner){
-          partner.x = poleB.x; partner.y = poleB.y; partner.rot = cellDef.axis==="v" ? 90:0;
+          partner.x = poleB.x; partner.y = poleB.y; partner.rot = 90;
           partner.bundleId = null; partner.locked = true; partner.draggable = false;
           redrawPiece(partner);
         }
@@ -1312,11 +1312,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
           poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
           poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
         }
-        piece.duplicated = false; piece.rot = cellDef.axis==="v" ? 90:0; piece.locked = true; piece.draggable = false;
+        piece.duplicated = false; piece.rot = 90; piece.locked = true; piece.draggable = false;
         piece.x = poleA.x; piece.y = poleA.y;
         redrawPiece(piece);
         var mirror = mkPiece(piece.id+"-copy", piece.pairKey, piece.colorKey, piece.cell, startX, startY,
-          { rot: cellDef.axis==="v" ? 90:0, draggable:false, locked:true });
+          { rot: 90, draggable:false, locked:true });
         state.pieces.push(mirror);
         addPieceEl(mirror);
         setTimeout(function(){
