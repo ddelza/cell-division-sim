@@ -1239,10 +1239,11 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     });
     if (best && bestDist < THRESH){
       if (best.pairKey === piece.pairKey && best.colorKey !== piece.colorKey){
-        var midX = (best.x + piece.x) / 2, midY = (best.y + piece.y) / 2;
+        var midY = (best.y + piece.y) / 2;
+        var cx = cellDef.rect.cx;
         var bundleId = piece.pairKey + "-bundle";
-        piece.x = midX - 14; piece.y = midY;
-        best.x = midX + 14; best.y = midY;
+        piece.x = cx - 14; piece.y = midY; piece.rot = 90;
+        best.x = cx + 14; best.y = midY; best.rot = 90;
         piece.bundleId = bundleId; best.bundleId = bundleId;
         piece.locked = true; best.locked = true;
         piece.draggable = false; best.draggable = false;
