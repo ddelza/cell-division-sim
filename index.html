@@ -626,16 +626,18 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     return { outer: outer, nucleus: nucleus };
   }
 
+  var SPINDLE_APEX_FACTOR = 0.86; // centrosome sits inside the membrane, near the cell cortex
+
   function spindle(g, c, axis){
     var wrap = el("g", { class: "cellring" });
     g.appendChild(wrap);
     var apex1, apex2;
     if (axis === "v"){
-      apex1 = { x: c.cx, y: c.cy - c.ry - 34 };
-      apex2 = { x: c.cx, y: c.cy + c.ry + 34 };
+      apex1 = { x: c.cx, y: c.cy - c.ry * SPINDLE_APEX_FACTOR };
+      apex2 = { x: c.cx, y: c.cy + c.ry * SPINDLE_APEX_FACTOR };
     } else {
-      apex1 = { x: c.cx - c.rx - 34, y: c.cy };
-      apex2 = { x: c.cx + c.rx + 34, y: c.cy };
+      apex1 = { x: c.cx - c.rx * SPINDLE_APEX_FACTOR, y: c.cy };
+      apex2 = { x: c.cx + c.rx * SPINDLE_APEX_FACTOR, y: c.cy };
     }
     [-0.55,-0.28,0,0.28,0.55].forEach(function(f){
       var ex = c.cx + (axis === "v" ? c.rx * f : 0);
@@ -646,6 +648,9 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
           stroke: "var(--muted)", "stroke-width": 1, opacity: 0.28
         }));
       });
+    });
+    [apex1, apex2].forEach(function(ap){
+      wrap.appendChild(el("circle", { cx: ap.x, cy: ap.y, r: 4, fill: "var(--muted)", opacity: 0.55 }));
     });
     return wrap;
   }
@@ -759,13 +764,14 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "아래 「세포질 분열」 버튼을 눌러 딸세포 2개를 완성하세요.",
         onAction: function(){ cytokinesisSplit("single", [
           { key:"left", rect: LEFT2, nucleus:true }, { key:"right", rect: RIGHT2, nucleus:true }
-        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[-14,-58,70],[14,-18,85],[-12,20,100],[12,58,115]]); },
+        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[-14,-58,90],[14,-18,90],[-12,20,90],[12,58,90]]); },
         initPieces: function(){
-          var defs = [["Apat","A",-60,-104],["Amat","A",-20,-104],["Bpat","B",20,-104],["Bmat","B",60,-104]];
+          var poleX = SINGLE.rx * POLE_CLUSTER_FACTOR;
+          var defs = [["Apat","A",-60],["Amat","A",-20],["Bpat","B",20],["Bmat","B",60]];
           var out = [];
           defs.forEach(function(d,i){
-            out.push(mkPiece("m4a-"+i, d[1], d[0], "single", SINGLE.cx+d[3], SINGLE.cy+d[2], { rot:0, draggable:false, locked:true }));
-            out.push(mkPiece("m4b-"+i, d[1], d[0], "single", SINGLE.cx-d[3], SINGLE.cy+d[2], { rot:0, draggable:false, locked:true }));
+            out.push(mkPiece("m4a-"+i, d[1], d[0], "single", SINGLE.cx-poleX, SINGLE.cy+d[2], { rot:90, draggable:false, locked:true }));
+            out.push(mkPiece("m4b-"+i, d[1], d[0], "single", SINGLE.cx+poleX, SINGLE.cy+d[2], { rot:90, draggable:false, locked:true }));
           });
           return out;
         },
@@ -838,13 +844,14 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         instruction: "아래 「세포질 분열」 버튼을 눌러 세포 2개로 나누세요.",
         onAction: function(){ cytokinesisSplit("single", [
           { key:"left", rect: LEFT2, nucleus:false }, { key:"right", rect: RIGHT2, nucleus:false }
-        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[0,-46,100],[0,46,80]]); },
+        ], function(piece){ return piece.x < SINGLE.cx ? "left" : "right"; }, [[0,-46,90],[0,46,90]]); },
         initPieces: function(){
+          var poleX = SINGLE.rx * POLE_CLUSTER_FACTOR;
           return [
-            mkPiece("e5-left-A","A","Apat","single", SINGLE.cx-100, SINGLE.cy-34, {duplicated:true, rot:0}),
-            mkPiece("e5-left-B","B","Bmat","single", SINGLE.cx-100, SINGLE.cy+34, {duplicated:true, rot:0}),
-            mkPiece("e5-right-A","A","Amat","single", SINGLE.cx+100, SINGLE.cy-34, {duplicated:true, rot:0}),
-            mkPiece("e5-right-B","B","Bpat","single", SINGLE.cx+100, SINGLE.cy+34, {duplicated:true, rot:0})
+            mkPiece("e5-left-A","A","Apat","single", SINGLE.cx-poleX, SINGLE.cy-34, {duplicated:true, rot:90}),
+            mkPiece("e5-left-B","B","Bmat","single", SINGLE.cx-poleX, SINGLE.cy+34, {duplicated:true, rot:90}),
+            mkPiece("e5-right-A","A","Amat","single", SINGLE.cx+poleX, SINGLE.cy-34, {duplicated:true, rot:90}),
+            mkPiece("e5-right-B","B","Bpat","single", SINGLE.cx+poleX, SINGLE.cy+34, {duplicated:true, rot:90})
           ];
         },
         cells: [{ rect: SINGLE, axis:"h", nucleus:false, spindle:true }]
@@ -894,21 +901,22 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         onAction: function(){
           cytokinesisSplit("left", [
             { key:"tl", rect: TL, nucleus:true }, { key:"bl", rect: BL, nucleus:true }
-          ], function(piece){ return piece.y < LEFT2.cy ? "tl" : "bl"; }, [[0,-18,70],[0,20,110]]);
+          ], function(piece){ return piece.y < LEFT2.cy ? "tl" : "bl"; }, [[0,-18,90],[0,20,90]]);
           cytokinesisSplit("right", [
             { key:"tr", rect: TR, nucleus:true }, { key:"br", rect: BR, nucleus:true }
-          ], function(piece){ return piece.y < RIGHT2.cy ? "tr" : "br"; }, [[0,-18,70],[0,20,110]]);
+          ], function(piece){ return piece.y < RIGHT2.cy ? "tr" : "br"; }, [[0,-18,90],[0,20,90]]);
         },
         initPieces: function(){
+          var poleY = LEFT2.ry * POLE_CLUSTER_FACTOR;
           return [
-            mkPiece("e8-left-At","A","Apat","left", LEFT2.cx-18, LEFT2.cy-78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-left-Ab","A","Apat","left", LEFT2.cx-18, LEFT2.cy+78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-left-Bt","B","Bmat","left", LEFT2.cx+20, LEFT2.cy-78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-left-Bb","B","Bmat","left", LEFT2.cx+20, LEFT2.cy+78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-right-At","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy-78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-right-Ab","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy+78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-right-Bt","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy-78, { rot:90, draggable:false, locked:true }),
-            mkPiece("e8-right-Bb","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy+78, { rot:90, draggable:false, locked:true })
+            mkPiece("e8-left-At","A","Apat","left", LEFT2.cx-18, LEFT2.cy-poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Ab","A","Apat","left", LEFT2.cx-18, LEFT2.cy+poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Bt","B","Bmat","left", LEFT2.cx+20, LEFT2.cy-poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-left-Bb","B","Bmat","left", LEFT2.cx+20, LEFT2.cy+poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-At","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy-poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Ab","A","Amat","right", RIGHT2.cx-18, RIGHT2.cy+poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Bt","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy-poleY, { rot:90, draggable:false, locked:true }),
+            mkPiece("e8-right-Bb","B","Bpat","right", RIGHT2.cx+20, RIGHT2.cy+poleY, { rot:90, draggable:false, locked:true })
           ];
         },
         cells: [
@@ -1268,6 +1276,22 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
     setTimeout(function(){ rec.g.classList.remove("reject"); }, 400);
   }
 
+  var POLE_CLUSTER_FACTOR = 0.6; // separated chromosomes cluster inside the membrane, short of the centrosome
+
+  function polePositions(cellDef, off){
+    var c = cellDef.rect;
+    if (cellDef.axis === "v"){
+      return {
+        poleA: { x: c.cx + off, y: c.cy - c.ry * POLE_CLUSTER_FACTOR },
+        poleB: { x: c.cx + off, y: c.cy + c.ry * POLE_CLUSTER_FACTOR }
+      };
+    }
+    return {
+      poleA: { x: c.cx - c.rx * POLE_CLUSTER_FACTOR, y: c.cy + off },
+      poleB: { x: c.cx + c.rx * POLE_CLUSTER_FACTOR, y: c.cy + off }
+    };
+  }
+
   // ---------------- button-triggered separation ----------------
   function doSeparate(){
     var s = currentStep();
@@ -1281,14 +1305,8 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         var idx = slotIndex(piece.cell + "-pole");
         var offs = cellDef.axis === "v" ? POLE_V : POLE_H;
         var off = offs[idx % offs.length];
-        var poleA, poleB;
-        if (cellDef.axis === "v"){
-          poleA = { x: cellDef.rect.cx + off, y: cellDef.rect.cy - cellDef.rect.ry - 40 };
-          poleB = { x: cellDef.rect.cx + off, y: cellDef.rect.cy + cellDef.rect.ry + 40 };
-        } else {
-          poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
-          poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
-        }
+        var poles = polePositions(cellDef, off);
+        var poleA = poles.poleA, poleB = poles.poleB;
         piece.x = poleA.x; piece.y = poleA.y; piece.rot = 90;
         piece.bundleId = null; piece.locked = true; piece.draggable = false;
         redrawPiece(piece);
@@ -1305,14 +1323,8 @@ footer{margin-top:28px;font-size:11.5px;color:var(--muted);text-align:center;}
         var idx = slotIndex(piece.cell + "-pole");
         var offs = cellDef.axis === "v" ? POLE_V : POLE_H;
         var off = offs[idx % offs.length];
-        var poleA, poleB;
-        if (cellDef.axis === "v"){
-          poleA = { x: cellDef.rect.cx + off, y: cellDef.rect.cy - cellDef.rect.ry - 40 };
-          poleB = { x: cellDef.rect.cx + off, y: cellDef.rect.cy + cellDef.rect.ry + 40 };
-        } else {
-          poleA = { x: cellDef.rect.cx - cellDef.rect.rx - 30, y: cellDef.rect.cy + off };
-          poleB = { x: cellDef.rect.cx + cellDef.rect.rx + 30, y: cellDef.rect.cy + off };
-        }
+        var poles = polePositions(cellDef, off);
+        var poleA = poles.poleA, poleB = poles.poleB;
         piece.duplicated = false; piece.rot = 90; piece.locked = true; piece.draggable = false;
         piece.x = poleA.x; piece.y = poleA.y;
         redrawPiece(piece);
